@@ -22,8 +22,8 @@ contract MaciVotingPluginSetup is PluginUpgradeableSetup {
     /// to verify the plugin on the respective block explorers.
     constructor() PluginUpgradeableSetup(address(new MaciVoting())) {}
 
-    /// @notice The ID of the permission required to call the `storeNumber` function.
-    bytes32 internal constant STORE_PERMISSION_ID = keccak256("STORE_PERMISSION");
+    /// @notice The identifier of the `EXECUTE_PERMISSION` permission.
+    bytes32 private constant EXECUTE_PERMISSION_ID = keccak256("EXECUTE_PERMISSION");
 
     /// @inheritdoc IPluginSetup
     function prepareInstallation(
@@ -48,7 +48,7 @@ contract MaciVotingPluginSetup is PluginUpgradeableSetup {
             where: plugin,
             who: _dao,
             condition: PermissionLib.NO_CONDITION,
-            permissionId: STORE_PERMISSION_ID
+            permissionId: EXECUTE_PERMISSION_ID
         });
 
         preparedSetupData.permissions = permissions;
@@ -77,7 +77,7 @@ contract MaciVotingPluginSetup is PluginUpgradeableSetup {
             where: _payload.plugin,
             who: _dao,
             condition: PermissionLib.NO_CONDITION,
-            permissionId: STORE_PERMISSION_ID
+            permissionId: EXECUTE_PERMISSION_ID
         });
     }
 }

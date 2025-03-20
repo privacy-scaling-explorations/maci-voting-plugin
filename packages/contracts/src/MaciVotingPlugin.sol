@@ -32,9 +32,6 @@ contract MaciVoting is PluginUUPSUpgradeable, ProposalUpgradeable, IMaciVotingPl
     /// @notice An [OpenZeppelin `Votes`](https://docs.openzeppelin.com/contracts/4.x/api/governance#Votes) compatible contract referencing the token being used for voting.
     IVotesUpgradeable private votingToken;
 
-    /// @notice The ID of the permission required to call the `storeNumber` function.
-    bytes32 public constant CREATE_PROPOSAL_PERMISSION_ID = keccak256("CREATE_PROPOSAL_PERMISSION");
-
     /// @notice The address of the maci contract.
     IMACI public maci;
 
@@ -47,6 +44,19 @@ contract MaciVoting is PluginUUPSUpgradeable, ProposalUpgradeable, IMaciVotingPl
 
     /// @notice The proposals.
     Proposal[] public proposals;
+
+    /// @notice The verifier address.
+    address public verifier;
+    /// @notice The vk registry address.
+    address public vkRegistry;
+
+    /// @notice The number of vote options (YES/NO/ABSTAIN)
+    uint256 public constant VOTE_OPTIONS = 3;
+    /// @notice The message batch size
+    uint8 public constant MESSAGE_BATCH_SIZE = 20;
+
+    /// @notice The factor to scale the voice credits by
+    uint256 private constant FACTOR = 10e10;
 
     error ProposalCreationForbidden(address _address);
     error NoVotingPower();
@@ -95,13 +105,17 @@ contract MaciVoting is PluginUUPSUpgradeable, ProposalUpgradeable, IMaciVotingPl
         IDAO _dao,
         address _maci,
         DomainObjs.PubKey calldata _coordinatorPubKey,
-        VotingSettings calldata _votingSettings
+        VotingSettings calldata _votingSettings,
+        address _verifier,
+        address _vkRegistry
     ) external initializer {
         __PluginUUPSUpgradeable_init(_dao);
 
         maci = IMACI(_maci);
         coordinatorPubKey = _coordinatorPubKey;
         votingSettings = _votingSettings;
+        verifier = _verifier;
+        vkRegistry = _vkRegistry;
     }
 
     /// @notice Returns the minimum voting power required to create a proposal stored in the voting settings.
@@ -167,8 +181,10 @@ contract MaciVoting is PluginUUPSUpgradeable, ProposalUpgradeable, IMaciVotingPl
             _allowFailureMap: 0
         });
 
+        /// @notice demo only
         Params.TreeDepths memory treeDepths = Params.TreeDepths({
             intStateTreeDepth: 2,
+            /// 5 options max
             voteOptionTreeDepth: 1
         });
 
@@ -180,16 +196,18 @@ contract MaciVoting is PluginUUPSUpgradeable, ProposalUpgradeable, IMaciVotingPl
             startDate: _startDate,
             endDate: _endDate,
             treeDepths: treeDepths,
-            messageBatchSize: 20,
+            messageBatchSize: MESSAGE_BATCH_SIZE,
             coordinatorPubKey: coordinatorPubKey,
-            verifier: address(0),
-            vkRegistry: address(0),
+            verifier: verifier,
+            vkRegistry: vkRegistry,
             mode: DomainObjs.Mode.NON_QV,
             gatekeeper: address(this),
+            // have added a getVoiceCredits function on this plugin contract so that we don't need a separate contract
+            // for the demo
             initialVoiceCreditProxy: address(this),
             relayers: relayers,
             // yes - no - abstain 
-            voteOptions: 3
+            voteOptions: VOTE_OPTIONS
         });
 
         uint256 pollId = IMACI(maci).nextPollId();
@@ -240,9 +258,11 @@ contract MaciVoting is PluginUUPSUpgradeable, ProposalUpgradeable, IMaciVotingPl
     function getVoiceCredits(address _address, bytes memory _data) public view returns (uint256) {
         uint256 snapshotBlock = abi.decode(_data, (uint256));
         uint256 votingPower = votingToken.getPastVotes(_address, snapshotBlock);
-        return votingPower;
+        return votingPower / FACTOR;
     }
 
+    /// @notice Returns the minimum participation balance
+    /// @return The minimum tokens required to participate in the voting
     function minParticipation() public view virtual returns (uint32) {
         return votingSettings.minParticipation;
     }
