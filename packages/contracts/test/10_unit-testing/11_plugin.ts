@@ -3,18 +3,29 @@ import {
   DAOMock,
   DAOMock__factory,
   MaciVoting,
-  MaciVotingPluginSetup__factory,
+  MaciVotingSetup__factory,
 } from '../../typechain';
-import '../../typechain/src/MyPlugin';
+import '../../typechain/src/MaciVoting';
 import {loadFixture} from '@nomicfoundation/hardhat-network-helpers';
 import {SignerWithAddress} from '@nomiclabs/hardhat-ethers/signers';
 import {expect} from 'chai';
-import {BigNumber} from 'ethers';
 import {ethers, upgrades} from 'hardhat';
+import {Keypair, PrivKey} from 'maci-domainobjs';
 
-export type InitData = {number: BigNumber};
-export const defaultInitData: InitData = {
-  number: BigNumber.from(123),
+const coordinatorMACIKeyPair = new Keypair(
+  PrivKey.deserialize(
+    'macisk.bdd73f1757f75261a0c9997def6cd47519cad2856347cdc6fd30718999576860'
+  )
+);
+
+export const defaultInitData = {
+  _maci: '0xE4721A80C6e56f4ebeed6acEE91b3ee715e7dD64', // TODO: setup MACI contract
+  _coordinatorPubKey: coordinatorMACIKeyPair.pubKey.asContractParam(),
+  _votingSettings: {
+    minParticipation: 1,
+    minDuration: 100,
+    minProposerVotingPower: 1,
+  },
 };
 
 export const STORE_PERMISSION_ID = ethers.utils.id('STORE_PERMISSION');
@@ -31,8 +42,13 @@ async function fixture(): Promise<FixtureResult> {
   const [deployer, alice, bob] = await ethers.getSigners();
   const daoMock = await new DAOMock__factory(deployer).deploy();
   const plugin = (await upgrades.deployProxy(
-    new MaciVotingPluginSetup__factory(deployer),
-    [daoMock.address, defaultInitData.number],
+    new MaciVotingSetup__factory(deployer),
+    [
+      daoMock.address,
+      defaultInitData._maci,
+      defaultInitData._coordinatorPubKey,
+      defaultInitData._votingSettings,
+    ],
     {
       kind: 'uups',
       initializer: 'initialize',
@@ -49,7 +65,12 @@ describe(PLUGIN_CONTRACT_NAME, function () {
     it('reverts if trying to re-initialize', async () => {
       const {plugin, daoMock} = await loadFixture(fixture);
       await expect(
-        plugin.initialize(daoMock.address, defaultInitData.number)
+        plugin.initialize(
+          daoMock.address,
+          defaultInitData._maci,
+          defaultInitData._coordinatorPubKey,
+          defaultInitData._votingSettings
+        )
       ).to.be.revertedWith('Initializable: contract is already initialized');
     });
   });

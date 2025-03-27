@@ -2907,7 +2907,7 @@ ethers@5.7.2, ethers@^5.5.1, ethers@^5.6.2, ethers@^5.7.0, ethers@^5.7.1, ethers
     "@ethersproject/web" "5.7.1"
     "@ethersproject/wordlists" "5.7.0"
 
-ethers@^6.13.5:
+ethers@^6.13.4, ethers@^6.13.5:
   version "6.13.5"
   resolved "https://registry.yarnpkg.com/ethers/-/ethers-6.13.5.tgz#8c1d6ac988ac08abc3c1d8fabbd4b8b602851ac4"
   integrity sha512-+knKNieu5EKRThQJWwqaJ10a6HE9sSehGeqWN65//wE7j47ZpFhKAnHB/JJFibwwg61I/koxaPsXbXpD/skNOQ==
@@ -4420,12 +4420,29 @@ maci-crypto@0.0.0-ci.f082b76:
     "@zk-kit/poseidon-cipher" "^0.3.2"
     ethers "^6.13.5"
 
+maci-crypto@^2.5.0:
+  version "2.5.0"
+  resolved "https://registry.yarnpkg.com/maci-crypto/-/maci-crypto-2.5.0.tgz#89a99921517b79564af8a356863c446b49e4cb0f"
+  integrity sha512-ozrLDH6kaK62TomNr5tnVgrUs6szXHCwcRyPzsQy07Wg2ZX61nyY0EFgWKAuU8kXqvYRdTtQdgflw6qpVz/4+w==
+  dependencies:
+    "@zk-kit/baby-jubjub" "^1.0.3"
+    "@zk-kit/eddsa-poseidon" "^1.1.0"
+    "@zk-kit/poseidon-cipher" "^0.3.2"
+    ethers "^6.13.4"
+
 maci-domainobjs@0.0.0-ci.f082b76:
   version "0.0.0-ci.f082b76"
   resolved "https://registry.yarnpkg.com/maci-domainobjs/-/maci-domainobjs-0.0.0-ci.f082b76.tgz#edfa42e2f9f754005b6f17c7c5e1eb4814909590"
   integrity sha512-p2olp8CAmce/7QB82PV84o9JqHn+DFkcetiSvsr9BrSkJ712fCczt12T7THvo3ruYG+13moK1cxpV9eX3d9lkA==
   dependencies:
     maci-crypto "0.0.0-ci.f082b76"
+
+maci-domainobjs@^2.5.0:
+  version "2.5.0"
+  resolved "https://registry.yarnpkg.com/maci-domainobjs/-/maci-domainobjs-2.5.0.tgz#f4710a1bdf4ffd613aaab109eae20b4db9da484e"
+  integrity sha512-MKyksmw+ndPG5HS80Ka8L7dEFDCuEis8HplYb3S+GqPDFwQ+Cl4vpMxF1Mr0d1SWAM4RfD4FQgAFaum4FWr1EA==
+  dependencies:
+    maci-crypto "^2.5.0"
 
 make-error@^1.1.1:
   version "1.3.6"

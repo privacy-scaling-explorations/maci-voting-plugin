@@ -1,5 +1,5 @@
 {
-  "name": "PluginName",
-  "description": "Description.",
+  "name": "MaciVoting",
+  "description": "Create proposals linked to MACI polls and vote privately on them. Execute the proposal if 'yes' votes win",
   "images": {}
 }

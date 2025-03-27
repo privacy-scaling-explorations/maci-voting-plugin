@@ -3,9 +3,9 @@ import buildMetadata from '../../src/build-metadata.json';
 import {
   DAOMock,
   DAOMock__factory,
-  MyPluginSetup,
-  MyPluginSetup__factory,
-  MyPlugin__factory,
+  MaciVotingSetup,
+  MaciVotingSetup__factory,
+  MaciVoting__factory,
 } from '../../typechain';
 import {STORE_PERMISSION_ID, defaultInitData} from './11_plugin';
 import {
@@ -22,7 +22,7 @@ type FixtureResult = {
   deployer: SignerWithAddress;
   alice: SignerWithAddress;
   bob: SignerWithAddress;
-  pluginSetup: MyPluginSetup;
+  pluginSetup: MaciVotingSetup;
   prepareInstallationInputs: string;
   prepareUninstallationInputs: string;
   daoMock: DAOMock;
@@ -31,13 +31,17 @@ type FixtureResult = {
 async function fixture(): Promise<FixtureResult> {
   const [deployer, alice, bob] = await ethers.getSigners();
   const daoMock = await new DAOMock__factory(deployer).deploy();
-  const pluginSetup = await new MyPluginSetup__factory(deployer).deploy();
+  const pluginSetup = await new MaciVotingSetup__factory(deployer).deploy();
 
   const prepareInstallationInputs = ethers.utils.defaultAbiCoder.encode(
     getNamedTypesFromMetadata(
       buildMetadata.pluginSetup.prepareInstallation.inputs
     ),
-    [defaultInitData.number]
+    [
+      defaultInitData._maci,
+      defaultInitData._coordinatorPubKey,
+      defaultInitData._votingSettings,
+    ]
   );
 
   const prepareUninstallationInputs = ethers.utils.defaultAbiCoder.encode(
@@ -97,11 +101,13 @@ describe(PLUGIN_SETUP_CONTRACT_NAME, function () {
         daoMock.address,
         prepareInstallationInputs
       );
-      const myPlugin = new MyPlugin__factory(deployer).attach(plugin);
+      const maciVoting = new MaciVoting__factory(deployer).attach(plugin);
 
       // initialization is correct
-      expect(await myPlugin.dao()).to.eq(daoMock.address);
-      expect(await myPlugin.number()).to.be.eq(defaultInitData.number);
+      expect(await maciVoting.dao()).to.eq(daoMock.address);
+      expect(await maciVoting.maci()).to.not.be.eq(
+        '0x0000000000000000000000000000000000000000'
+      );
     });
   });
 

@@ -9,15 +9,15 @@ import {IPluginSetup} from "@aragon/osx-commons-contracts/src/plugin/setup/IPlug
 import {IDAO} from "@aragon/osx-commons-contracts/src/dao/IDAO.sol";
 
 import {DomainObjs} from "maci-contracts/contracts/utilities/DomainObjs.sol";
-import {MaciVoting} from "./MaciVotingPlugin.sol";
-import {IMaciVotingPlugin} from "./IMaciVotingPlugin.sol";
+import {MaciVoting} from "./MaciVoting.sol";
+import {IMaciVoting} from "./IMaciVoting.sol";
 
-/// @title MaciVotingPluginSetup
+/// @title MaciVotingSetup
 /// @dev Release 1, Build 1
-contract MaciVotingPluginSetup is PluginUpgradeableSetup {
+contract MaciVotingSetup is PluginUpgradeableSetup {
     using ProxyLib for address;
 
-    /// @notice Constructs the `PluginUpgradeableSetup` by storing the `MaciVotingPlugin` implementation address.
+    /// @notice Constructs the `PluginUpgradeableSetup` by storing the `MaciVoting` implementation address.
     /// @dev The implementation address is used to deploy UUPS proxies referencing it and
     /// to verify the plugin on the respective block explorers.
     constructor() PluginUpgradeableSetup(address(new MaciVoting())) {}
@@ -33,8 +33,8 @@ contract MaciVotingPluginSetup is PluginUpgradeableSetup {
         (
             address maci,
             DomainObjs.PubKey memory publicKey,
-            IMaciVotingPlugin.VotingSettings memory votingSettings
-        ) = abi.decode(_data, (address, DomainObjs.PubKey, IMaciVotingPlugin.VotingSettings));
+            IMaciVoting.VotingSettings memory votingSettings
+        ) = abi.decode(_data, (address, DomainObjs.PubKey, IMaciVoting.VotingSettings));
 
         plugin = IMPLEMENTATION.deployUUPSProxy(
             abi.encodeCall(MaciVoting.initialize, (IDAO(_dao), maci, publicKey, votingSettings))

@@ -3,9 +3,10 @@ pragma solidity ^0.8.20;
 
 import {PluginUUPSUpgradeable} from "@aragon/osx-commons-contracts/src/plugin/PluginUUPSUpgradeable.sol";
 import {IDAO} from "@aragon/osx-commons-contracts/src/dao/IDAO.sol";
+import {IProposal} from "@aragon/osx-commons-contracts/src/plugin/extensions/proposal/IProposal.sol";
 import {ProposalUpgradeable} from "@aragon/osx-commons-contracts/src/plugin/extensions/proposal/ProposalUpgradeable.sol";
 import {RATIO_BASE, _applyRatioCeiled} from "./Utils.sol";
-import {IMaciVotingPlugin} from "./IMaciVotingPlugin.sol";
+import {IMaciVoting} from "./IMaciVoting.sol";
 
 import {IVotesUpgradeable} from "@openzeppelin/contracts-upgradeable/governance/utils/IVotesUpgradeable.sol";
 import {SafeCastUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/math/SafeCastUpgradeable.sol";
@@ -15,14 +16,14 @@ import {IPoll} from "maci-contracts/contracts/interfaces/IPoll.sol";
 import {Params} from "maci-contracts/contracts/utilities/Params.sol";
 import {DomainObjs} from "maci-contracts/contracts/utilities/DomainObjs.sol";
 
-/// @title MyPlugin
+/// @title MaciVoting
 /// @dev Release 1, Build 1
 /// @notice Each voter gets voting power based on their token balance snapshot
 /// Voters can vote for option 0 or 1 (yes or no)
 /// Abstain - signed up but not voted (needs changes in the MACI protocol to keep track of that)
 /// What about minimum participation?
 /// TODO: Maybe inheriting from MACI directly?
-contract MaciVoting is PluginUUPSUpgradeable, ProposalUpgradeable, IMaciVotingPlugin {
+contract MaciVoting is PluginUUPSUpgradeable, ProposalUpgradeable, IMaciVoting {
     using SafeCastUpgradeable for uint256;
 
     /// @notice The [ERC-165](https://eips.ethereum.org/EIPS/eip-165) interface ID of the contract.
@@ -34,6 +35,10 @@ contract MaciVoting is PluginUUPSUpgradeable, ProposalUpgradeable, IMaciVotingPl
 
     /// @notice The ID of the permission required to call the `storeNumber` function.
     bytes32 public constant CREATE_PROPOSAL_PERMISSION_ID = keccak256("CREATE_PROPOSAL_PERMISSION");
+
+    /// @notice The ID of the permission required to call the `execute` function.
+    bytes32 public constant EXECUTE_PROPOSAL_PERMISSION_ID =
+        keccak256("EXECUTE_PROPOSAL_PERMISSION");
 
     /// @notice The address of the maci contract.
     IMACI public maci;
@@ -49,6 +54,7 @@ contract MaciVoting is PluginUUPSUpgradeable, ProposalUpgradeable, IMaciVotingPl
     Proposal[] public proposals;
 
     error ProposalCreationForbidden(address _address);
+    error ProposalExecutionForbidden(uint256 proposalId);
     error NoVotingPower();
     error DateOutOfBounds(uint64 limit, uint64 actual);
 
@@ -128,7 +134,7 @@ contract MaciVoting is PluginUUPSUpgradeable, ProposalUpgradeable, IMaciVotingPl
         IDAO.Action[] calldata _actions,
         uint64 _startDate,
         uint64 _endDate
-    ) external returns (uint256 proposalId) {
+    ) external auth(CREATE_PROPOSAL_PERMISSION_ID) returns (uint256 proposalId) {
         // Check that either `_msgSender` owns enough tokens or has enough voting power from being a delegatee.
         {
             uint256 minProposerVotingPower_ = minProposerVotingPower();
@@ -188,7 +194,7 @@ contract MaciVoting is PluginUUPSUpgradeable, ProposalUpgradeable, IMaciVotingPl
             gatekeeper: address(this),
             initialVoiceCreditProxy: address(this),
             relayers: relayers,
-            // yes - no - abstain 
+            // yes - no - abstain
             voteOptions: 3
         });
 
@@ -222,16 +228,118 @@ contract MaciVoting is PluginUUPSUpgradeable, ProposalUpgradeable, IMaciVotingPl
     /// @param _proposalId The ID of the proposal.
     /// @param _message The message containing your encrypted vote
     /// @param _encPubKey The public key of the voter
-    function vote(uint256 _proposalId, DomainObjs.Message calldata _message, DomainObjs.PubKey calldata _encPubKey ) public {
+    function vote(
+        uint256 _proposalId,
+        DomainObjs.Message calldata _message,
+        DomainObjs.PubKey calldata _encPubKey
+    ) public {
         Proposal memory proposal_ = proposals[_proposalId];
 
         IPoll(proposal_.pollAddress).publishMessage(_message, _encPubKey);
     }
 
+    /// @notice Internal function to check if a proposal is still open.
+    /// @param proposal_ The proposal struct.
+    /// @return True if the proposal is open, false otherwise.
+    function _isProposalOpen(Proposal storage proposal_) internal view virtual returns (bool) {
+        // TODO: work here NICO
+        uint64 currentTime = block.timestamp.toUint64();
+
+        return
+            proposal_.parameters.startDate <= currentTime &&
+            currentTime < proposal_.parameters.endDate &&
+            !proposal_.executed;
+    }
+
+    /// @notice An internal function that checks if the proposal succeeded or not.
+    /// @param _proposalId The ID of the proposal.
+    /// @param _isOpen Weather the proposal is open or not.
+    /// @return Returns `true` if the proposal succeeded depending on the thresholds and voting modes.
+    function _hasSucceeded(uint256 _proposalId, bool _isOpen) internal view virtual returns (bool) {
+        // TODO: work here NICO
+        Proposal storage proposal_ = proposals[_proposalId];
+
+        if (_isOpen) {
+            // If the proposal is still open and the voting mode is VoteReplacement,
+            // success cannot be determined until the voting period ends.
+            if (proposal_.parameters.votingMode == VotingMode.VoteReplacement) {
+                return false;
+            }
+
+            // For Standard and EarlyExecution modes, check if the support threshold
+            // has been reached early to determine success while proposal is still open.
+            if (!isSupportThresholdReachedEarly(_proposalId)) {
+                return false;
+            }
+        } else {
+            // When the proposal is closed, check if the support threshold
+            // has been reached based on final voting results.
+            if (!isSupportThresholdReached(_proposalId)) {
+                return false;
+            }
+        }
+        if (!isMinParticipationReached(_proposalId)) {
+            return false;
+        }
+        if (!isMinApprovalReached(_proposalId)) {
+            return false;
+        }
+
+        return true;
+    }
+
+    /// @notice Internal function to execute a proposal. It assumes the queried proposal exists.
+    /// @param _proposalId The ID of the proposal.
+    function _execute(uint256 _proposalId) internal virtual {
+        Proposal storage proposal_ = proposals[_proposalId];
+
+        proposal_.executed = true;
+
+        _execute(
+            proposal_.targetConfig.target,
+            bytes32(_proposalId),
+            proposal_.actions,
+            proposal_.allowFailureMap,
+            proposal_.targetConfig.operation
+        );
+
+        emit ProposalExecuted(_proposalId);
+    }
+
+    /// @notice Internal function to check if a proposal can be executed. It assumes the queried proposal exists.
+    /// @dev Threshold and minimal values are compared with `>` and `>=` comparators, respectively.
+    /// @param _proposalId The ID of the proposal.
+    /// @return True if the proposal can be executed, false otherwise.
+    function _canExecute(uint256 _proposalId) internal view virtual returns (bool) {
+        Proposal storage proposal_ = proposals[_proposalId];
+
+        // Verify that the vote has not been executed already.
+        if (proposal_.executed) {
+            return false;
+        }
+
+        bool isProposalOpen = _isProposalOpen(proposal_);
+        return _hasSucceeded(_proposalId, isProposalOpen);
+    }
+
+    /// @notice Executes a proposal after the voting period has ended and results are available.
+    /// @param _proposalId The ID of the proposal.
+    function execute(
+        uint256 _proposalId
+    ) public virtual override(IProposal) auth(EXECUTE_PROPOSAL_PERMISSION_ID) {
+        if (!_canExecute(_proposalId)) {
+            revert ProposalExecutionForbidden(_proposalId);
+        }
+        _execute(_proposalId);
+    }
+
     /**
      * Gatekeeper function to register users
      */
-    function register(DomainObjs.PubKey calldata _pubKey, bytes memory _signUpGatekeeperData) public {
+    function register(
+        DomainObjs.PubKey calldata _pubKey,
+        bytes memory _signUpGatekeeperData
+    ) public {
         maci.signUp(_pubKey, _signUpGatekeeperData);
     }
 
