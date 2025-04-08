@@ -42,8 +42,7 @@ contract MaciVoting is PluginUUPSUpgradeable, ProposalUpgradeable, IMaciVoting {
     bytes32 public constant CREATE_PROPOSAL_PERMISSION_ID = keccak256("CREATE_PROPOSAL_PERMISSION");
 
     /// @notice The ID of the permission required to call the `execute` function.
-    bytes32 public constant EXECUTE_PROPOSAL_PERMISSION_ID =
-        keccak256("EXECUTE_PROPOSAL_PERMISSION");
+    bytes32 public constant EXECUTE_PERMISSION_ID = keccak256("EXECUTE_PERMISSION");
 
     /// @notice The address of the maci contract.
     MACI public maci;
@@ -392,7 +391,7 @@ contract MaciVoting is PluginUUPSUpgradeable, ProposalUpgradeable, IMaciVoting {
     /// @param _proposalId The ID of the proposal.
     function execute(
         uint256 _proposalId
-    ) public virtual override(IProposal) auth(EXECUTE_PROPOSAL_PERMISSION_ID) {
+    ) public virtual override(IProposal) auth(EXECUTE_PERMISSION_ID) {
         if (!_canExecute(_proposalId)) {
             revert ProposalExecutionForbidden(_proposalId);
         }

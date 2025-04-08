@@ -19,7 +19,7 @@ const coordinatorMACIKeyPair = new Keypair(
 );
 
 export const defaultInitData = {
-  _maci: '0xE4721A80C6e56f4ebeed6acEE91b3ee715e7dD64', // TODO: setup MACI contract
+  _maci: '0xFC1a75b369d6347B407f352de9bb0a5EB0cF2674',
   _coordinatorPubKey: coordinatorMACIKeyPair.pubKey.asContractParam(),
   _votingSettings: {
     minParticipation: 1,
@@ -28,7 +28,10 @@ export const defaultInitData = {
   },
 };
 
-export const STORE_PERMISSION_ID = ethers.utils.id('STORE_PERMISSION');
+export const CREATE_PROPOSAL_PERMISSION_ID = ethers.utils.id(
+  'CREATE_PROPOSAL_PERMISSION'
+);
+export const EXECUTE_PERMISSION_ID = ethers.utils.id('EXECUTE_PERMISSION');
 
 type FixtureResult = {
   deployer: SignerWithAddress;

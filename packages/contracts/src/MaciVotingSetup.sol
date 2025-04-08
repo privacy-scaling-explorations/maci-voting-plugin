@@ -22,8 +22,11 @@ contract MaciVotingSetup is PluginUpgradeableSetup {
     /// to verify the plugin on the respective block explorers.
     constructor() PluginUpgradeableSetup(address(new MaciVoting())) {}
 
-    /// @notice The ID of the permission required to call the `storeNumber` function.
-    bytes32 internal constant STORE_PERMISSION_ID = keccak256("STORE_PERMISSION");
+    /// @notice The ID of the permission required to call the `createProposal` function.
+    bytes32 internal constant CREATE_PROPOSAL_PERMISSION_ID =
+        keccak256("CREATE_PROPOSAL_PERMISSION");
+    /// @notice The ID of the permission required to call the `execute` function.
+    bytes32 internal constant EXECUTE_PERMISSION_ID = keccak256("EXECUTE_PERMISSION");
 
     /// @inheritdoc IPluginSetup
     function prepareInstallation(
@@ -48,7 +51,14 @@ contract MaciVotingSetup is PluginUpgradeableSetup {
             where: plugin,
             who: _dao,
             condition: PermissionLib.NO_CONDITION,
-            permissionId: STORE_PERMISSION_ID
+            permissionId: CREATE_PROPOSAL_PERMISSION_ID
+        });
+        permissions[1] = PermissionLib.MultiTargetPermission({
+            operation: PermissionLib.Operation.Grant,
+            where: plugin,
+            who: _dao,
+            condition: PermissionLib.NO_CONDITION,
+            permissionId: EXECUTE_PERMISSION_ID
         });
 
         preparedSetupData.permissions = permissions;
@@ -77,7 +87,14 @@ contract MaciVotingSetup is PluginUpgradeableSetup {
             where: _payload.plugin,
             who: _dao,
             condition: PermissionLib.NO_CONDITION,
-            permissionId: STORE_PERMISSION_ID
+            permissionId: CREATE_PROPOSAL_PERMISSION_ID
+        });
+        permissions[1] = PermissionLib.MultiTargetPermission({
+            operation: PermissionLib.Operation.Revoke,
+            where: _payload.plugin,
+            who: _dao,
+            condition: PermissionLib.NO_CONDITION,
+            permissionId: EXECUTE_PERMISSION_ID
         });
     }
 }

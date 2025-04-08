@@ -6,10 +6,36 @@
       "description": "The information required for the installation of build 1.",
       "inputs": [
         {
-          "name": "number",
-          "type": "uint256",
-          "internalType": "uint256",
-          "description": "The initial number to be stored."
+          "name": "_maci",
+          "type": "address",
+          "internalType": "address",
+          "description": "The deploy maci contract address."
+        },
+        {
+          "components": [
+            {
+              "name": "minParticipation",
+              "type": "uint32",
+              "internalType": "uint32",
+              "description": "The minimum participation threshold for the proposal vote."
+            },
+            {
+              "name": "minDuration",
+              "type": "uint64",
+              "internalType": "uint64",
+              "description": "The minimum duration of the proposal vote in seconds."
+            },
+            {
+              "name": "minProposerVotingPower",
+              "type": "uint256",
+              "internalType": "uint256",
+              "description": "The minimum voting power required to create a proposal."
+            }
+          ],
+          "name": "votingSettings",
+          "type": "tuple",
+          "internalType": "struct IMaciVoting.VotingSettings",
+          "description": "The voting settings that will be enforced when proposals are created."
         }
       ]
     },

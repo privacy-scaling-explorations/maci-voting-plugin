@@ -7,7 +7,11 @@ import {
   MaciVotingSetup__factory,
   MaciVoting__factory,
 } from '../../typechain';
-import {STORE_PERMISSION_ID, defaultInitData} from './11_plugin';
+import {
+  CREATE_PROPOSAL_PERMISSION_ID,
+  defaultInitData,
+  EXECUTE_PERMISSION_ID,
+} from './11_plugin';
 import {
   Operation,
   PERMISSION_MANAGER_FLAGS,
@@ -86,14 +90,21 @@ describe(PLUGIN_SETUP_CONTRACT_NAME, function () {
 
       expect(plugin).to.be.equal(anticipatedPluginAddress);
       expect(helpers.length).to.be.equal(0);
-      expect(permissions.length).to.be.equal(1);
+      expect(permissions.length).to.be.equal(2);
       expect(permissions).to.deep.equal([
         [
           Operation.Grant,
           plugin,
           daoMock.address,
           PERMISSION_MANAGER_FLAGS.NO_CONDITION,
-          STORE_PERMISSION_ID,
+          CREATE_PROPOSAL_PERMISSION_ID,
+        ],
+        [
+          Operation.Grant,
+          plugin,
+          daoMock.address,
+          PERMISSION_MANAGER_FLAGS.NO_CONDITION,
+          EXECUTE_PERMISSION_ID,
         ],
       ]);
 
@@ -127,14 +138,21 @@ describe(PLUGIN_SETUP_CONTRACT_NAME, function () {
         }
       );
 
-      expect(permissions.length).to.be.equal(1);
+      expect(permissions.length).to.be.equal(2);
       expect(permissions).to.deep.equal([
         [
           Operation.Revoke,
           dummyAddr,
           daoMock.address,
           PERMISSION_MANAGER_FLAGS.NO_CONDITION,
-          STORE_PERMISSION_ID,
+          CREATE_PROPOSAL_PERMISSION_ID,
+        ],
+        [
+          Operation.Revoke,
+          dummyAddr,
+          daoMock.address,
+          PERMISSION_MANAGER_FLAGS.NO_CONDITION,
+          EXECUTE_PERMISSION_ID,
         ],
       ]);
     });
