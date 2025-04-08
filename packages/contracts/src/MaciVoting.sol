@@ -3,6 +3,7 @@ pragma solidity ^0.8.20;
 
 import {PluginUUPSUpgradeable} from "@aragon/osx-commons-contracts/src/plugin/PluginUUPSUpgradeable.sol";
 import {IDAO} from "@aragon/osx-commons-contracts/src/dao/IDAO.sol";
+import {Action} from "@aragon/osx-commons-contracts/src/executors/IExecutor.sol";
 import {IProposal} from "@aragon/osx-commons-contracts/src/plugin/extensions/proposal/IProposal.sol";
 import {ProposalUpgradeable} from "@aragon/osx-commons-contracts/src/plugin/extensions/proposal/ProposalUpgradeable.sol";
 import {RATIO_BASE, _applyRatioCeiled} from "./Utils.sol";
@@ -12,7 +13,11 @@ import {IVotesUpgradeable} from "@openzeppelin/contracts-upgradeable/governance/
 import {SafeCastUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/math/SafeCastUpgradeable.sol";
 import {IERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import {IMACI} from "maci-contracts/contracts/interfaces/IMACI.sol";
+import {MACI} from "maci-contracts/contracts/MACI.sol";
 import {IPoll} from "maci-contracts/contracts/interfaces/IPoll.sol";
+import {Poll} from "maci-contracts/contracts/Poll.sol";
+import {ITally} from "maci-contracts/contracts/interfaces/ITally.sol";
+import {Tally} from "maci-contracts/contracts/Tally.sol";
 import {Params} from "maci-contracts/contracts/utilities/Params.sol";
 import {DomainObjs} from "maci-contracts/contracts/utilities/DomainObjs.sol";
 
@@ -41,7 +46,7 @@ contract MaciVoting is PluginUUPSUpgradeable, ProposalUpgradeable, IMaciVoting {
         keccak256("EXECUTE_PROPOSAL_PERMISSION");
 
     /// @notice The address of the maci contract.
-    IMACI public maci;
+    MACI public maci;
 
     /// @notice The coordinator public key.
     /// @dev We do not allow it to be passed per poll as we want the DAO to control this for now
@@ -53,8 +58,19 @@ contract MaciVoting is PluginUUPSUpgradeable, ProposalUpgradeable, IMaciVoting {
     /// @notice The proposals.
     Proposal[] public proposals;
 
+    /// @notice Thrown if the proposal with same actions and metadata already exists.
+    /// @param proposalId The id of the proposal.
+    error ProposalAlreadyExists(uint256 proposalId);
+    /// @notice Thrown when a sender is not allowed to create a proposal.
+    /// @param _address The sender address.
     error ProposalCreationForbidden(address _address);
+    /// @notice Thrown if the proposal execution is forbidden.
+    /// @param proposalId The ID of the proposal.
     error ProposalExecutionForbidden(uint256 proposalId);
+    /// @notice Thrown when a proposal doesn't exist.
+    /// @param proposalId The ID of the proposal which doesn't exist.
+    error NonexistentProposal(uint256 proposalId);
+
     error NoVotingPower();
     error DateOutOfBounds(uint64 limit, uint64 actual);
 
@@ -75,15 +91,27 @@ contract MaciVoting is PluginUUPSUpgradeable, ProposalUpgradeable, IMaciVoting {
     /// @param parameters The proposal parameters at the time of the proposal creation.
     /// @param actions The actions to be executed when the proposal passes.
     /// @param allowFailureMap A bitmap allowing the proposal to succeed, even if individual actions might revert. If the bit at index `i` is 1, the proposal succeeds even if the `i`th action reverts. A failure map value of 0 requires every action to not revert.
+    /// @param targetConfig Configuration for the execution target, specifying the target address and operation type
+    ///     (either `Call` or `DelegateCall`). Defined by `TargetConfig` in the `IPlugin` interface,
+    ///     part of the `osx-commons-contracts` package, added in build 3.
     /// @param pollId The ID of the MACI poll
     /// @param pollAddress The address of the MACI poll
     struct Proposal {
         bool executed;
         ProposalParameters parameters;
-        IDAO.Action[] actions;
+        Action[] actions;
         uint256 allowFailureMap;
+        TargetConfig targetConfig; // added in v1.3
         uint256 pollId;
         address pollAddress;
+    }
+
+    // @notice Tally results struct that is implementd in Tally but not defined in the interface ITally
+    // @param flag Whether the tally value was initialized or not
+    // @param value The tally value of an option
+    struct TallyResult {
+        bool flag;
+        uint256 value;
     }
 
     /// @notice Disables the initializers on the implementation contract to prevent it from being left uninitialized.
@@ -105,7 +133,7 @@ contract MaciVoting is PluginUUPSUpgradeable, ProposalUpgradeable, IMaciVoting {
     ) external initializer {
         __PluginUUPSUpgradeable_init(_dao);
 
-        maci = IMACI(_maci);
+        maci = MACI(_maci);
         coordinatorPubKey = _coordinatorPubKey;
         votingSettings = _votingSettings;
     }
@@ -124,6 +152,26 @@ contract MaciVoting is PluginUUPSUpgradeable, ProposalUpgradeable, IMaciVoting {
         return votingToken;
     }
 
+    /// @dev Helper function to avoid stack too deep in non via-ir compilation mode.
+    function _emitProposalCreatedEvent(
+        bytes calldata _metadata,
+        Action[] calldata _actions,
+        uint256 _allowFailureMap,
+        uint256 proposalId,
+        uint64 _startDate,
+        uint64 _endDate
+    ) private {
+        emit ProposalCreated(
+            proposalId,
+            _msgSender(),
+            _startDate,
+            _endDate,
+            _metadata,
+            _actions,
+            _allowFailureMap
+        );
+    }
+
     /// @notice Creates a proposal.
     /// @param _metadata The metadata of the proposal.
     /// @param _actions The actions of the proposal.
@@ -131,7 +179,8 @@ contract MaciVoting is PluginUUPSUpgradeable, ProposalUpgradeable, IMaciVoting {
     /// @param _endDate The end date of the proposal.
     function createProposal(
         bytes calldata _metadata,
-        IDAO.Action[] calldata _actions,
+        Action[] calldata _actions,
+        uint256 _allowFailureMap,
         uint64 _startDate,
         uint64 _endDate
     ) external auth(CREATE_PROPOSAL_PERMISSION_ID) returns (uint256 proposalId) {
@@ -164,14 +213,23 @@ contract MaciVoting is PluginUUPSUpgradeable, ProposalUpgradeable, IMaciVoting {
 
         (_startDate, _endDate) = _validateProposalDates(_startDate, _endDate);
 
-        proposalId = _createProposal({
-            _creator: _msgSender(),
-            _metadata: _metadata,
-            _startDate: _startDate,
-            _endDate: _endDate,
-            _actions: _actions,
-            _allowFailureMap: 0
-        });
+        /// @todo follow checks effects interactions and move this before (can take poll id before deploying though still external call first)
+        proposalId = _createProposalId(keccak256(abi.encode(_actions, _metadata)));
+
+        // Store proposal related information
+        Proposal storage proposal_ = proposals[proposalId];
+
+        if (_proposalExists(proposalId)) {
+            revert ProposalAlreadyExists(proposalId);
+        }
+
+        proposal_.parameters.startDate = _startDate;
+        proposal_.parameters.endDate = _endDate;
+        proposal_.parameters.snapshotBlock = snapshotBlock.toUint64();
+        proposal_.parameters.minVotingPower = _applyRatioCeiled(
+            totalVotingPower_,
+            minParticipation()
+        );
 
         Params.TreeDepths memory treeDepths = Params.TreeDepths({
             intStateTreeDepth: 2,
@@ -201,20 +259,13 @@ contract MaciVoting is PluginUUPSUpgradeable, ProposalUpgradeable, IMaciVoting {
         uint256 pollId = IMACI(maci).nextPollId();
         IMACI.PollContracts memory pollContracts = IMACI(maci).deployPoll(deployPollArgs);
 
-        /// @todo follow checks effects interactions and move this before (can take poll id before deploying though still external call first)
-        // Store proposal related information
-        Proposal storage proposal_ = proposals[proposalId];
-
-        proposal_.parameters.startDate = _startDate;
-        proposal_.parameters.endDate = _endDate;
-        proposal_.parameters.snapshotBlock = snapshotBlock.toUint64();
-        proposal_.parameters.minVotingPower = _applyRatioCeiled(
-            totalVotingPower_,
-            minParticipation()
-        );
-
         proposal_.pollId = pollId;
         proposal_.pollAddress = pollContracts.poll;
+
+        // Reduce costs
+        if (_allowFailureMap != 0) {
+            proposal_.allowFailureMap = _allowFailureMap;
+        }
 
         for (uint256 i; i < _actions.length; ) {
             proposal_.actions.push(_actions[i]);
@@ -222,6 +273,15 @@ contract MaciVoting is PluginUUPSUpgradeable, ProposalUpgradeable, IMaciVoting {
                 ++i;
             }
         }
+
+        _emitProposalCreatedEvent(
+            _metadata,
+            _actions,
+            _allowFailureMap,
+            proposalId,
+            _startDate,
+            _endDate
+        );
     }
 
     /// @notice Votes for a proposal.
@@ -238,56 +298,64 @@ contract MaciVoting is PluginUUPSUpgradeable, ProposalUpgradeable, IMaciVoting {
         IPoll(proposal_.pollAddress).publishMessage(_message, _encPubKey);
     }
 
-    /// @notice Internal function to check if a proposal is still open.
-    /// @param proposal_ The proposal struct.
-    /// @return True if the proposal is open, false otherwise.
-    function _isProposalOpen(Proposal storage proposal_) internal view virtual returns (bool) {
-        // TODO: work here NICO
-        uint64 currentTime = block.timestamp.toUint64();
-
-        return
-            proposal_.parameters.startDate <= currentTime &&
-            currentTime < proposal_.parameters.endDate &&
-            !proposal_.executed;
-    }
-
-    /// @notice An internal function that checks if the proposal succeeded or not.
+    /// @notice Internal function to check if a proposal can be executed. It assumes the queried proposal exists.
     /// @param _proposalId The ID of the proposal.
-    /// @param _isOpen Weather the proposal is open or not.
-    /// @return Returns `true` if the proposal succeeded depending on the thresholds and voting modes.
-    function _hasSucceeded(uint256 _proposalId, bool _isOpen) internal view virtual returns (bool) {
-        // TODO: work here NICO
+    /// @return True if the proposal can be executed, false otherwise.
+    function _canExecute(uint256 _proposalId) internal view virtual returns (bool) {
         Proposal storage proposal_ = proposals[_proposalId];
 
-        if (_isOpen) {
-            // If the proposal is still open and the voting mode is VoteReplacement,
-            // success cannot be determined until the voting period ends.
-            if (proposal_.parameters.votingMode == VotingMode.VoteReplacement) {
-                return false;
-            }
+        IMACI.PollContracts memory pollContracts = maci.getPoll(proposal_.pollId);
+        IPoll poll_ = IPoll(pollContracts.poll);
+        Tally tally_ = Tally(pollContracts.tally);
 
-            // For Standard and EarlyExecution modes, check if the support threshold
-            // has been reached early to determine success while proposal is still open.
-            if (!isSupportThresholdReachedEarly(_proposalId)) {
-                return false;
-            }
-        } else {
-            // When the proposal is closed, check if the support threshold
-            // has been reached based on final voting results.
-            if (!isSupportThresholdReached(_proposalId)) {
-                return false;
-            }
-        }
-        if (!isMinParticipationReached(_proposalId)) {
+        // Verify that the proposal has not been executed already.
+        if (proposal_.executed) {
             return false;
         }
-        if (!isMinApprovalReached(_proposalId)) {
+        // Verify that the proposal poll has ended.
+        if (block.timestamp < poll_.endDate()) {
+            return false;
+        }
+        // Check if the minimum participation threshold has been reached based on final voting results.
+        if (proposal_.parameters.minVotingPower < tally_.totalSpent()) {
+            return false;
+        }
+        // Check if the support threshold has been reached based on final voting results.
+        // no -> voteOption = 0
+        // yes -> voteOption = 1
+        (uint256 noValue, bool noFlag) = tally_.tallyResults(0);
+        (uint256 yesValue, bool yesFlag) = tally_.tallyResults(1);
+
+        if (!noFlag || !yesFlag) {
+            return false;
+        }
+
+        if (yesValue < noValue) {
             return false;
         }
 
         return true;
     }
 
+    /// @notice Checks if proposal exists or not.
+    /// @param _proposalId The ID of the proposal.
+    /// @return Returns `true` if proposal exists, otherwise false.
+    function _proposalExists(uint256 _proposalId) private view returns (bool) {
+        return proposals[_proposalId].parameters.snapshotBlock != 0;
+    }
+
+    /// @dev Reverts if the proposal with the given `_proposalId` does not exist.
+    function canExecute(
+        uint256 _proposalId
+    ) public view virtual override(IProposal) returns (bool) {
+        if (!_proposalExists(_proposalId)) {
+            revert NonexistentProposal(_proposalId);
+        }
+
+        return _canExecute(_proposalId);
+    }
+
+    /** DELETE FROM HERE */
     /// @notice Internal function to execute a proposal. It assumes the queried proposal exists.
     /// @param _proposalId The ID of the proposal.
     function _execute(uint256 _proposalId) internal virtual {
@@ -306,21 +374,25 @@ contract MaciVoting is PluginUUPSUpgradeable, ProposalUpgradeable, IMaciVoting {
         emit ProposalExecuted(_proposalId);
     }
 
-    /// @notice Internal function to check if a proposal can be executed. It assumes the queried proposal exists.
-    /// @dev Threshold and minimal values are compared with `>` and `>=` comparators, respectively.
-    /// @param _proposalId The ID of the proposal.
-    /// @return True if the proposal can be executed, false otherwise.
-    function _canExecute(uint256 _proposalId) internal view virtual returns (bool) {
-        Proposal storage proposal_ = proposals[_proposalId];
-
-        // Verify that the vote has not been executed already.
-        if (proposal_.executed) {
-            return false;
-        }
-
-        bool isProposalOpen = _isProposalOpen(proposal_);
-        return _hasSucceeded(_proposalId, isProposalOpen);
+    function _authorizeUpgrade(address newImplementation) internal override {
+        // Add your access control logic here; for example:
+        require(true, "Unauthorized upgrade");
     }
+
+    function hasSucceeded(uint256 _proposalId) external view override(IProposal) returns (bool) {
+        return true;
+    }
+
+    // @TODO NICO: what does this function do?
+    /// @inheritdoc IProposal
+    function customProposalParamsABI() external pure override(IProposal) returns (string memory) {
+        return "(uint256 allowFailureMap, uint8 voteOption, bool tryEarlyExecution)";
+    }
+
+    function proposalCount() public view override returns (uint256) {
+        return proposals.length;
+    }
+    /** TO HERE */
 
     /// @notice Executes a proposal after the voting period has ended and results are available.
     /// @param _proposalId The ID of the proposal.
@@ -330,7 +402,20 @@ contract MaciVoting is PluginUUPSUpgradeable, ProposalUpgradeable, IMaciVoting {
         if (!_canExecute(_proposalId)) {
             revert ProposalExecutionForbidden(_proposalId);
         }
-        _execute(_proposalId);
+
+        Proposal memory proposal_ = proposals[_proposalId];
+
+        proposal_.executed = true;
+
+        _execute(
+            proposal_.targetConfig.target,
+            bytes32(_proposalId),
+            proposal_.actions,
+            proposal_.allowFailureMap,
+            proposal_.targetConfig.operation
+        );
+
+        emit ProposalExecuted(_proposalId);
     }
 
     /**
