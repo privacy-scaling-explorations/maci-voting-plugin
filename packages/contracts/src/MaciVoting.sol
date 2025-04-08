@@ -172,6 +172,44 @@ contract MaciVoting is PluginUUPSUpgradeable, ProposalUpgradeable, IMaciVoting {
         );
     }
 
+    /// @notice Deploy a poll in MACI
+    /// @param _startDate The start date of the proposal.
+    /// @param _endDate The end date of the proposal.
+    function deployPoll(
+        uint64 _startDate,
+        uint64 _endDate
+    ) internal returns (uint256, IMACI.PollContracts memory) {
+        Params.TreeDepths memory treeDepths = Params.TreeDepths({
+            intStateTreeDepth: 2,
+            voteOptionTreeDepth: 1
+        });
+
+        address[] memory relayers = new address[](1);
+        relayers[0] = address(0);
+
+        // Arguments to deploy a poll
+        IMACI.DeployPollArgs memory deployPollArgs = IMACI.DeployPollArgs({
+            startDate: _startDate,
+            endDate: _endDate,
+            treeDepths: treeDepths,
+            messageBatchSize: 20,
+            coordinatorPubKey: coordinatorPubKey,
+            verifier: address(0),
+            vkRegistry: address(0),
+            mode: DomainObjs.Mode.NON_QV,
+            policy: address(this),
+            initialVoiceCreditProxy: address(this),
+            relayers: relayers,
+            // yes - no - abstain
+            voteOptions: 3
+        });
+
+        uint256 pollId = IMACI(maci).nextPollId();
+        IMACI.PollContracts memory pollContracts = IMACI(maci).deployPoll(deployPollArgs);
+
+        return (pollId, pollContracts);
+    }
+
     /// @notice Creates a proposal.
     /// @param _metadata The metadata of the proposal.
     /// @param _actions The actions of the proposal.
@@ -183,7 +221,7 @@ contract MaciVoting is PluginUUPSUpgradeable, ProposalUpgradeable, IMaciVoting {
         uint256 _allowFailureMap,
         uint64 _startDate,
         uint64 _endDate
-    ) external auth(CREATE_PROPOSAL_PERMISSION_ID) returns (uint256 proposalId) {
+    ) public auth(CREATE_PROPOSAL_PERMISSION_ID) returns (uint256 proposalId) {
         // Check that either `_msgSender` owns enough tokens or has enough voting power from being a delegatee.
         {
             uint256 minProposerVotingPower_ = minProposerVotingPower();
@@ -231,33 +269,10 @@ contract MaciVoting is PluginUUPSUpgradeable, ProposalUpgradeable, IMaciVoting {
             minParticipation()
         );
 
-        Params.TreeDepths memory treeDepths = Params.TreeDepths({
-            intStateTreeDepth: 2,
-            voteOptionTreeDepth: 1
-        });
-
-        address[] memory relayers = new address[](1);
-        relayers[0] = address(0);
-
-        // Arguments to deploy a poll
-        IMACI.DeployPollArgs memory deployPollArgs = IMACI.DeployPollArgs({
-            startDate: _startDate,
-            endDate: _endDate,
-            treeDepths: treeDepths,
-            messageBatchSize: 20,
-            coordinatorPubKey: coordinatorPubKey,
-            verifier: address(0),
-            vkRegistry: address(0),
-            mode: DomainObjs.Mode.NON_QV,
-            gatekeeper: address(this),
-            initialVoiceCreditProxy: address(this),
-            relayers: relayers,
-            // yes - no - abstain
-            voteOptions: 3
-        });
-
-        uint256 pollId = IMACI(maci).nextPollId();
-        IMACI.PollContracts memory pollContracts = IMACI(maci).deployPoll(deployPollArgs);
+        (uint256 pollId, IMACI.PollContracts memory pollContracts) = deployPoll(
+            _startDate,
+            _endDate
+        );
 
         proposal_.pollId = pollId;
         proposal_.pollAddress = pollContracts.poll;
@@ -282,6 +297,24 @@ contract MaciVoting is PluginUUPSUpgradeable, ProposalUpgradeable, IMaciVoting {
             _startDate,
             _endDate
         );
+    }
+
+    /// @inheritdoc IProposal
+    function createProposal(
+        bytes calldata _metadata,
+        Action[] calldata _actions,
+        uint64 _startDate,
+        uint64 _endDate,
+        bytes memory _data
+    ) external override returns (uint256 proposalId) {
+        // Note that this calls public function for permission check.
+        uint256 allowFailureMap;
+
+        if (_data.length != 0) {
+            (allowFailureMap) = abi.decode(_data, (uint256));
+        }
+
+        proposalId = createProposal(_metadata, _actions, allowFailureMap, _startDate, _endDate);
     }
 
     /// @notice Votes for a proposal.
@@ -355,45 +388,6 @@ contract MaciVoting is PluginUUPSUpgradeable, ProposalUpgradeable, IMaciVoting {
         return _canExecute(_proposalId);
     }
 
-    /** DELETE FROM HERE */
-    /// @notice Internal function to execute a proposal. It assumes the queried proposal exists.
-    /// @param _proposalId The ID of the proposal.
-    function _execute(uint256 _proposalId) internal virtual {
-        Proposal storage proposal_ = proposals[_proposalId];
-
-        proposal_.executed = true;
-
-        _execute(
-            proposal_.targetConfig.target,
-            bytes32(_proposalId),
-            proposal_.actions,
-            proposal_.allowFailureMap,
-            proposal_.targetConfig.operation
-        );
-
-        emit ProposalExecuted(_proposalId);
-    }
-
-    function _authorizeUpgrade(address newImplementation) internal override {
-        // Add your access control logic here; for example:
-        require(true, "Unauthorized upgrade");
-    }
-
-    function hasSucceeded(uint256 _proposalId) external view override(IProposal) returns (bool) {
-        return true;
-    }
-
-    // @TODO NICO: what does this function do?
-    /// @inheritdoc IProposal
-    function customProposalParamsABI() external pure override(IProposal) returns (string memory) {
-        return "(uint256 allowFailureMap, uint8 voteOption, bool tryEarlyExecution)";
-    }
-
-    function proposalCount() public view override returns (uint256) {
-        return proposals.length;
-    }
-    /** TO HERE */
-
     /// @notice Executes a proposal after the voting period has ended and results are available.
     /// @param _proposalId The ID of the proposal.
     function execute(
@@ -403,7 +397,7 @@ contract MaciVoting is PluginUUPSUpgradeable, ProposalUpgradeable, IMaciVoting {
             revert ProposalExecutionForbidden(_proposalId);
         }
 
-        Proposal memory proposal_ = proposals[_proposalId];
+        Proposal storage proposal_ = proposals[_proposalId];
 
         proposal_.executed = true;
 
@@ -439,6 +433,18 @@ contract MaciVoting is PluginUUPSUpgradeable, ProposalUpgradeable, IMaciVoting {
     function minParticipation() public view virtual returns (uint32) {
         return votingSettings.minParticipation;
     }
+
+    /** DELETE FROM HERE */
+    function hasSucceeded(uint256 _proposalId) external view override(IProposal) returns (bool) {
+        return proposals[_proposalId].executed;
+    }
+
+    // @TODO NICO: what does this function do?
+    /// @inheritdoc IProposal
+    function customProposalParamsABI() external pure override(IProposal) returns (string memory) {
+        return "(uint256 allowFailureMap, uint8 voteOption, bool tryEarlyExecution)";
+    }
+    /** TO HERE */
 
     /// @notice Validates and returns the proposal vote dates.
     /// @param _start The start date of the proposal vote. If 0, the current timestamp is used and the vote starts immediately.

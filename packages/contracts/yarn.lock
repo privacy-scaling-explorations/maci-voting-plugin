@@ -493,6 +493,15 @@
     "@ethersproject/properties" "^5.7.0"
     "@ethersproject/strings" "^5.7.0"
 
+"@excubiae/contracts@^0.7.0":
+  version "0.7.2"
+  resolved "https://registry.yarnpkg.com/@excubiae/contracts/-/contracts-0.7.2.tgz#21df2d2ab2bca6b152cf80e4225eb0835aacc7a0"
+  integrity sha512-dXVQVdPCG4wDJKQr9gtKGv+IdULZpo6P9hGKDZsvj5gLpGutxFbkbMv2IqWrsvT6ITvAXbB+/0uWL89Ta+XE0A==
+  dependencies:
+    "@openzeppelin/contracts" "^5.2.0"
+    "@semaphore-protocol/contracts" "^4.9.0"
+    solady "0.1.4"
+
 "@fastify/busboy@^2.0.0":
   version "2.1.0"
   resolved "https://registry.yarnpkg.com/@fastify/busboy/-/busboy-2.1.0.tgz#0709e9f4cb252351c609c6e6d8d6779a8d25edff"
@@ -1208,6 +1217,13 @@
     "@noble/hashes" "~1.7.1"
     "@scure/base" "~1.2.4"
 
+"@semaphore-protocol/contracts@^4.9.0":
+  version "4.9.2"
+  resolved "https://registry.yarnpkg.com/@semaphore-protocol/contracts/-/contracts-4.9.2.tgz#49277a5de8ee847b11c09f29c663ba4c221d7a20"
+  integrity sha512-/DnZ9SOzBsfv06Vz74djVHEPgZwIkdNt7e5Ay2612Rw22EwToedQX5ahJxfG9vbgHleOZ1iAV4y+XKmDhPpDBg==
+  dependencies:
+    "@zk-kit/lean-imt.sol" "2.0.1"
+
 "@sentry/core@5.30.0":
   version "5.30.0"
   resolved "https://registry.yarnpkg.com/@sentry/core/-/core-5.30.0.tgz#6b203664f69e75106ee8b5a2fe1d717379b331f3"
@@ -1502,6 +1518,13 @@
   version "2.0.0-beta.12"
   resolved "https://registry.yarnpkg.com/@zk-kit/imt.sol/-/imt.sol-2.0.0-beta.12.tgz#9acd5fb64111b781a6cc614d3998a285fb48ab54"
   integrity sha512-kKgopVO6zlfSiQgv3X9WykaCeyb8jGtthWGqdo1ZD7fY1bH8A7BWhhWxtoCuU5mPEgRbamw1cAoUynuLoEULsg==
+  dependencies:
+    poseidon-solidity "0.0.5"
+
+"@zk-kit/lean-imt.sol@2.0.1":
+  version "2.0.1"
+  resolved "https://registry.yarnpkg.com/@zk-kit/lean-imt.sol/-/lean-imt.sol-2.0.1.tgz#23ffd37fc4bac95a1e18dc9d55132362532137ee"
+  integrity sha512-2dy/wfzch2vy5QtDCFmQwN7E4GZP0xBcucTb2mfZoJP5V69cjPRdy6KcbS0YOcBMH/Lb7BgXLsekRYjh9JNKEw==
   dependencies:
     poseidon-solidity "0.0.5"
 
@@ -4378,11 +4401,12 @@ lru_map@^0.3.3:
   resolved "https://registry.yarnpkg.com/lru_map/-/lru_map-0.3.3.tgz#b5c8351b9464cbd750335a79650a0ec0e56118dd"
   integrity sha512-Pn9cox5CsMYngeDbmChANltQl+5pi6XmTrraMSzhPmMBbmgcxmqWry0U3PGapCU1yB4/LqCcom7qhHZiF/jGfQ==
 
-maci-contracts@0.0.0-ci.f082b76:
-  version "0.0.0-ci.f082b76"
-  resolved "https://registry.yarnpkg.com/maci-contracts/-/maci-contracts-0.0.0-ci.f082b76.tgz#3751f695f4c490edb2750de114f1917ba8b20e3c"
-  integrity sha512-nNiwLfO1dNdKP0cZirXLPQ77lbRwb987kRLoZXdk7okNbuNkuEhIHSxJMaAIKOv2rNEjfSux2FG8q0U3yKPIbQ==
+maci-contracts@0.0.0-ci.8949733:
+  version "0.0.0-ci.8949733"
+  resolved "https://registry.yarnpkg.com/maci-contracts/-/maci-contracts-0.0.0-ci.8949733.tgz#71bf8f5dd7b4fddcce6da764923c4fceca2d59ca"
+  integrity sha512-wJrvpzJtuJW1sHJHThH8BipE6gQCrFgdFILJMmN+UPFlR6FvD2gFxm6AuU8pVkRae7j3/QbT/bTr0XFnCK7WQg==
   dependencies:
+    "@excubiae/contracts" "^0.7.0"
     "@nomicfoundation/hardhat-ethers" "^3.0.8"
     "@nomicfoundation/hardhat-toolbox" "^5.0.0"
     "@openzeppelin/contracts" "^5.2.0"
@@ -4394,26 +4418,27 @@ maci-contracts@0.0.0-ci.f082b76:
     ethers "^6.13.5"
     hardhat "^2.22.19"
     lowdb "^1.0.0"
-    maci-core "0.0.0-ci.f082b76"
-    maci-crypto "0.0.0-ci.f082b76"
-    maci-domainobjs "0.0.0-ci.f082b76"
+    maci-core "0.0.0-ci.8949733"
+    maci-crypto "0.0.0-ci.8949733"
+    maci-domainobjs "0.0.0-ci.8949733"
     snarkjs "^0.7.5"
+    solady "^0.1.12"
     solidity-docgen "^0.6.0-beta.36"
     uuid "^11.1.0"
 
-maci-core@0.0.0-ci.f082b76:
-  version "0.0.0-ci.f082b76"
-  resolved "https://registry.yarnpkg.com/maci-core/-/maci-core-0.0.0-ci.f082b76.tgz#dd8587785a164e1ff5ff57f5f2d1a0113b02c802"
-  integrity sha512-JKYCbgxn502AJVqzWpz230eOqlhsS2xryHgZbB+s/T1VGUW9gFOF3IaQlSz5fWStY3+4EMgKKgVkTnRVLVJfxQ==
+maci-core@0.0.0-ci.8949733:
+  version "0.0.0-ci.8949733"
+  resolved "https://registry.yarnpkg.com/maci-core/-/maci-core-0.0.0-ci.8949733.tgz#44337f701fea0d7e19c3fb9baa3c4686eb65ad3f"
+  integrity sha512-glWxhngY88Ye2Nj2Vdwt2FIHWEggi9FGZYhilN/CtahdyXvlVloSNhav+KmO5yMmgv3xiqHA/QtRwSWrOLXi9g==
   dependencies:
     "@zk-kit/lean-imt" "^2.2.3"
-    maci-crypto "0.0.0-ci.f082b76"
-    maci-domainobjs "0.0.0-ci.f082b76"
+    maci-crypto "0.0.0-ci.8949733"
+    maci-domainobjs "0.0.0-ci.8949733"
 
-maci-crypto@0.0.0-ci.f082b76:
-  version "0.0.0-ci.f082b76"
-  resolved "https://registry.yarnpkg.com/maci-crypto/-/maci-crypto-0.0.0-ci.f082b76.tgz#fb45e9fb84dd476cd4ab24cf3987278c6085a85b"
-  integrity sha512-KYoLap0O7uuvbNG6o35Z8rgo22YOn6Rn3oQJJfFmaWiLwOTNodCvx/OczPk6dgd8MEAlYGT3A5d7QZDbIIU/DA==
+maci-crypto@0.0.0-ci.8949733:
+  version "0.0.0-ci.8949733"
+  resolved "https://registry.yarnpkg.com/maci-crypto/-/maci-crypto-0.0.0-ci.8949733.tgz#7acf76e6e221e433c21f11e80f89da4ea0c2015d"
+  integrity sha512-395I8rhWfyF0BwkvOgwepLd8RTEEqBTIWPfc/qMj5tSR/PhYFA2KiMCBYeHf+gqFtsMivqXsj9REtsEoj/SB9g==
   dependencies:
     "@zk-kit/baby-jubjub" "^1.0.3"
     "@zk-kit/eddsa-poseidon" "^1.1.0"
@@ -4430,12 +4455,12 @@ maci-crypto@^2.5.0:
     "@zk-kit/poseidon-cipher" "^0.3.2"
     ethers "^6.13.4"
 
-maci-domainobjs@0.0.0-ci.f082b76:
-  version "0.0.0-ci.f082b76"
-  resolved "https://registry.yarnpkg.com/maci-domainobjs/-/maci-domainobjs-0.0.0-ci.f082b76.tgz#edfa42e2f9f754005b6f17c7c5e1eb4814909590"
-  integrity sha512-p2olp8CAmce/7QB82PV84o9JqHn+DFkcetiSvsr9BrSkJ712fCczt12T7THvo3ruYG+13moK1cxpV9eX3d9lkA==
+maci-domainobjs@0.0.0-ci.8949733:
+  version "0.0.0-ci.8949733"
+  resolved "https://registry.yarnpkg.com/maci-domainobjs/-/maci-domainobjs-0.0.0-ci.8949733.tgz#4a27f07abeddb672f676959c4d4846e31a724894"
+  integrity sha512-GGOkiNoWeV89CZ/aOkFwaTOgdRxF7yG2ajpGYh9qOxKtBxHcTyTEdUwQNdvHm1EVBcwRe7uD8hcDbQMrPipBzg==
   dependencies:
-    maci-crypto "0.0.0-ci.f082b76"
+    maci-crypto "0.0.0-ci.8949733"
 
 maci-domainobjs@^2.5.0:
   version "2.5.0"
@@ -5496,6 +5521,16 @@ snarkjs@^0.7.5:
     js-sha3 "^0.8.0"
     logplease "^1.2.15"
     r1csfile "0.0.48"
+
+solady@0.1.4:
+  version "0.1.4"
+  resolved "https://registry.yarnpkg.com/solady/-/solady-0.1.4.tgz#1f589be95789f356f44d49f1304baeeca6cf5549"
+  integrity sha512-BQKpX9Ezdp6WpUcT3H7cWdZKH31Ih7yZiUOQ6SUYzJ6gYjCB0KXPg77bS+pzmeQEtdMNK56gjlaqtn6ptFPSXQ==
+
+solady@^0.1.12:
+  version "0.1.14"
+  resolved "https://registry.yarnpkg.com/solady/-/solady-0.1.14.tgz#e2f8f4cc5ea39682b3eadb63ffa28c2d25739d9e"
+  integrity sha512-Gowq1vzo1xGErRFvtV5W10tvyeq9UafGVWh0WisWvJ04fx5gn4dmakwnzEIYr76Am9csHcL1jMhsuuc5/rmEsg==
 
 solc@0.7.3:
   version "0.7.3"

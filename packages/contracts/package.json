@@ -15,7 +15,7 @@
     "@aragon/osx-commons-contracts": "^1.4.0",
     "@openzeppelin/contracts": "^4.9.6",
     "@openzeppelin/contracts-upgradeable": "^4.9.6",
-    "maci-contracts": "0.0.0-ci.f082b76",
+    "maci-contracts": "0.0.0-ci.8949733",
     "maci-domainobjs": "^2.5.0"
   },
   "devDependencies": {
