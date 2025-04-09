@@ -7,10 +7,10 @@
   resolved "https://registry.yarnpkg.com/@adraffy/ens-normalize/-/ens-normalize-1.10.1.tgz#63430d04bd8c5e74f8d7d049338f1cd9d4f02069"
   integrity sha512-96Z2IP3mYmF1Xg2cDm8f1gWGf/HUVedQ3FMifV4kG/PQ4yEP51xDtRAEfhVNt5f/uzpNkZHwWQuUcu6D6K+Ekw==
 
-"@aragon/osx-commons-configs@0.4.0", "@aragon/osx-commons-configs@^0.4.0":
-  version "0.4.0"
-  resolved "https://registry.yarnpkg.com/@aragon/osx-commons-configs/-/osx-commons-configs-0.4.0.tgz#5b6ae025de1ccf7f9a135bfbcb0aa822c774acf9"
-  integrity sha512-/2wIQCbv/spMRdOjRXK0RrXG1TK5aMcbD73RvMgMwQwSrKcA1dCntUuSxmTm2W8eEtOzs8E1VPjqZk0cXL4SSQ==
+"@aragon/osx-commons-configs@^0.8.0":
+  version "0.8.0"
+  resolved "https://registry.yarnpkg.com/@aragon/osx-commons-configs/-/osx-commons-configs-0.8.0.tgz#71e27c7063c3ca7a26a2c5ae12594063800bd9db"
+  integrity sha512-O8CIKxm+jCN4sq8DBAISlo+Y75VKY03uMqGVP1bUxshqW3ax42r2vlYtTRE/0dJgS9Yh5ElO1tVfDutsGoYWoA==
   dependencies:
     tslib "^2.6.2"
 
@@ -22,24 +22,23 @@
     "@openzeppelin/contracts" "4.9.6"
     "@openzeppelin/contracts-upgradeable" "4.9.6"
 
-"@aragon/osx-commons-sdk@0.0.1-alpha.11":
-  version "0.0.1-alpha.11"
-  resolved "https://registry.yarnpkg.com/@aragon/osx-commons-sdk/-/osx-commons-sdk-0.0.1-alpha.11.tgz#1e3e39aac3351b6649921a5e373a5146b86b2c92"
-  integrity sha512-/FgTLnS73QY0JxZYQlHwpd2ZuMPkPKdIlci9T4jgH9E4Eyyxh6GX7fJK+HekCcf6oMS5tTZ/Cb3sVyyzoO95iw==
+"@aragon/osx-commons-sdk@^0.2.0":
+  version "0.2.0"
+  resolved "https://registry.yarnpkg.com/@aragon/osx-commons-sdk/-/osx-commons-sdk-0.2.0.tgz#e5ca5db172866775a02337c22af3a05ac16541fa"
+  integrity sha512-bxzvIbxdQtObqLPrJlJcPuy2cMzrE9TI7zlNMcbKnyr4swp44ZHZi5NKcwX1eFAf+oZc1aFlehb1gPwPMvaT8Q==
   dependencies:
-    "@aragon/osx-commons-configs" "^0.4.0"
+    "@aragon/osx-commons-configs" "^0.8.0"
     "@ethersproject/address" "5.7.0"
     "@ethersproject/bignumber" "5.7.0"
     "@ethersproject/contracts" "5.7.0"
     "@ethersproject/hash" "5.7.0"
     "@ethersproject/logger" "5.7.0"
     "@ethersproject/providers" "5.7.2"
-    ipfs-http-client "^51.0.0"
 
-"@aragon/osx-ethers@1.4.0-alpha.0":
-  version "1.4.0-alpha.0"
-  resolved "https://registry.yarnpkg.com/@aragon/osx-ethers/-/osx-ethers-1.4.0-alpha.0.tgz#329f1ac27660b486fa0b296dddeb004ce352001c"
-  integrity sha512-fFsrG/XMIjZe3MxVQdf87gqAC4q0Z/eBp72QUuzXJQ0gMSTSj/4TvveFn1N8toLN6KsJolMEkaTamyCGYR+5iA==
+"@aragon/osx-ethers@^1.4.0":
+  version "1.4.0"
+  resolved "https://registry.yarnpkg.com/@aragon/osx-ethers/-/osx-ethers-1.4.0.tgz#b36b61973ef50798706c2645056a4ff6dc357f4a"
+  integrity sha512-7DoidZNuFHkps9oYuU+da/NJ+ItPXpfu9wja5vHtS0ExFMcU8ZbCDJGBaDMc0m/Q0kNeFIinCeQS6e1lUDx7VA==
   dependencies:
     ethers "^5.6.2"
 

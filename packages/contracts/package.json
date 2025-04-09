@@ -19,9 +19,9 @@
     "maci-domainobjs": "^2.5.0"
   },
   "devDependencies": {
-    "@aragon/osx-commons-configs": "0.4.0",
-    "@aragon/osx-commons-sdk": "0.0.1-alpha.11",
-    "@aragon/osx-ethers": "1.4.0-alpha.0",
+    "@aragon/osx-commons-configs": "^0.8.0",
+    "@aragon/osx-commons-sdk": "^0.2.0",
+    "@aragon/osx-ethers": "^1.4.0",
     "@ethersproject/abi": "5.7.0",
     "@ethersproject/abstract-signer": "5.7.0",
     "@ethersproject/bignumber": "5.7.0",

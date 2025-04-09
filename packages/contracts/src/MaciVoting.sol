@@ -337,7 +337,6 @@ contract MaciVoting is PluginUUPSUpgradeable, ProposalUpgradeable, IMaciVoting {
         Proposal storage proposal_ = proposals[_proposalId];
 
         IMACI.PollContracts memory pollContracts = maci.getPoll(proposal_.pollId);
-        IPoll poll_ = IPoll(pollContracts.poll);
         Tally tally_ = Tally(pollContracts.tally);
 
         // Verify that the proposal has not been executed already.
@@ -345,7 +344,7 @@ contract MaciVoting is PluginUUPSUpgradeable, ProposalUpgradeable, IMaciVoting {
             return false;
         }
         // Verify that the proposal poll has ended.
-        if (block.timestamp < poll_.endDate()) {
+        if (!tally_.isTallied()) {
             return false;
         }
         // Check if the minimum participation threshold has been reached based on final voting results.
