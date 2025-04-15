@@ -1,4 +1,5 @@
-import {DAOMock, IPlugin} from '../../typechain';
+import {IPlugin} from '../../typechain';
+import {ARTIFACT_SOURCES} from '../test-utils/wrapper';
 import {
   DAO_PERMISSIONS,
   PLUGIN_SETUP_PROCESSOR_PERMISSIONS,
@@ -9,16 +10,17 @@ import {
   PluginSetupProcessorStructs,
   PluginSetupProcessor,
   DAOStructs,
+  DAO,
 } from '@aragon/osx-ethers';
 import {SignerWithAddress} from '@nomiclabs/hardhat-ethers/signers';
 import {expect} from 'chai';
 import {ContractTransaction} from 'ethers';
-import {ethers} from 'hardhat';
+import hre, {ethers} from 'hardhat';
 
 export async function installPLugin(
   signer: SignerWithAddress,
   psp: PluginSetupProcessor,
-  dao: DAOMock,
+  dao: DAO,
   pluginSetupRef: PluginSetupProcessorStructs.PluginSetupRefStruct,
   data: string
 ): Promise<{
@@ -28,8 +30,8 @@ export async function installPLugin(
   appliedEvent: PluginSetupProcessorEvents.InstallationAppliedEvent;
 }> {
   const prepareTx = await psp.connect(signer).prepareInstallation(dao.address, {
-    pluginSetupRef: pluginSetupRef,
-    data: data,
+    pluginSetupRef,
+    data,
   });
 
   const preparedEvent =
@@ -50,8 +52,8 @@ export async function installPLugin(
   );
 
   const applyTx = await psp.connect(signer).applyInstallation(dao.address, {
-    pluginSetupRef: pluginSetupRef,
-    plugin: plugin,
+    pluginSetupRef,
+    plugin,
     permissions: preparedPermissions,
     helpersHash: ethers.utils.keccak256(
       ethers.utils.defaultAbiCoder.encode(
@@ -73,7 +75,7 @@ export async function installPLugin(
 export async function uninstallPLugin(
   signer: SignerWithAddress,
   psp: PluginSetupProcessor,
-  dao: DAOMock,
+  dao: DAO,
   plugin: IPlugin,
   pluginSetupRef: PluginSetupProcessorStructs.PluginSetupRefStruct,
   data: string,
@@ -96,7 +98,7 @@ export async function uninstallPLugin(
     });
 
   const preparedEvent =
-    await findEvent<PluginSetupProcessorEvents.UninstallationPreparedEvent>(
+    findEvent<PluginSetupProcessorEvents.UninstallationPreparedEvent>(
       await prepareTx.wait(),
       psp.interface.getEvent('UninstallationPrepared').name
     );
@@ -128,7 +130,7 @@ export async function uninstallPLugin(
 export async function updatePlugin(
   signer: SignerWithAddress,
   psp: PluginSetupProcessor,
-  dao: DAOMock,
+  dao: DAO,
   plugin: IPlugin,
   currentHelpers: string[],
   pluginSetupRefCurrent: PluginSetupProcessorStructs.PluginSetupRefStruct,
@@ -161,7 +163,6 @@ export async function updatePlugin(
     );
 
   const preparedPermissions = preparedEvent.args.preparedSetupData.permissions;
-
   await checkPermissions(
     preparedPermissions,
     dao,
@@ -182,6 +183,7 @@ export async function updatePlugin(
       )
     ),
   });
+
   const appliedEvent = findEvent<PluginSetupProcessorEvents.UpdateAppliedEvent>(
     await applyTx.wait(),
     psp.interface.getEvent('UpdateApplied').name
@@ -192,7 +194,7 @@ export async function updatePlugin(
 
 async function checkPermissions(
   preparedPermissions: DAOStructs.MultiTargetPermissionStruct[],
-  dao: DAOMock,
+  dao: DAO,
   psp: PluginSetupProcessor,
   signer: SignerWithAddress,
   applyPermissionId: string
@@ -220,4 +222,23 @@ async function checkPermissions(
   ) {
     throw `The used signer does not have the permission with ID '${applyPermissionId}' granted and thus cannot apply the setup`;
   }
+}
+
+// TODO Move into OSX commons as part of Task OS-928.
+export async function createDaoProxy(
+  deployer: SignerWithAddress,
+  dummyMetadata: string
+): Promise<DAO> {
+  const daoProxy = await hre.wrapper.deploy(ARTIFACT_SOURCES.DAO, {
+    withProxy: true,
+  });
+
+  await daoProxy.initialize(
+    dummyMetadata,
+    deployer.address,
+    ethers.constants.AddressZero,
+    dummyMetadata
+  );
+
+  return daoProxy;
 }

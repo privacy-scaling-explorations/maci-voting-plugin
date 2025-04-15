@@ -2,7 +2,6 @@
 .coverage_artifacts
 .coverage_cache
 .coverage_contracts
-artifacts
 build
 cache
 coverage
@@ -10,9 +9,15 @@ dist
 node_modules
 typechain
 
-packages/subgraph/imported
-packages/subgraph/generated
-packages/subgraph/tests/.bin
+packages/contracts/deployments
+packages/contracts/.upgradable/
+packages/contracts/createVersionProposalData*.json
+
+packages/contracts/artifacts
+
+packages/artifacts/src/abi.ts
+
+docs
 
 # files
 *.env
@@ -21,7 +26,6 @@ packages/subgraph/tests/.bin
 .pnp.*
 coverage.json
 
-packages/subgraph/deploy-output.txt
-packages/subgraph/subgraph.yaml
-packages/subgraph/tests/.latest.json
-packages/subgraph/tests/helpers/extended-schema.ts
+artifacts-zk
+cache-zk
+deployments-zk

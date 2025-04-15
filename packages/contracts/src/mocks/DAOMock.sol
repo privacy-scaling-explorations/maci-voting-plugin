@@ -3,9 +3,9 @@
 pragma solidity ^0.8.8;
 
 import {IDAO} from "@aragon/osx-commons-contracts/src/dao/IDAO.sol";
-import {IExecutor, Action} from "@aragon/osx-commons-contracts/src/executors/IExecutor.sol";
 import {IPermissionCondition} from "@aragon/osx-commons-contracts/src/permission/condition/IPermissionCondition.sol";
 import {PermissionLib} from "@aragon/osx-commons-contracts/src/permission/PermissionLib.sol";
+import {IExecutor, Action} from "@aragon/osx-commons-contracts/src/executors/IExecutor.sol";
 
 contract DAOMock is IDAO, IExecutor {
     address internal constant NO_CONDITION = address(0);

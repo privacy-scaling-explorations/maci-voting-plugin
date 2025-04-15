@@ -9,7 +9,7 @@ import path from 'path';
  * @param {HardhatRuntimeEnvironment} hre
  */
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
-  hre.aragonToVerifyContracts.forEach(async contract => {
+  for (const contract of hre.aragonToVerifyContracts) {
     console.log(
       `Verifying address ${contract.address} with constructor argument ${contract.args}.`
     );
@@ -21,7 +21,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
       `Delaying 6s, so we don't reach Etherscan's Max rate limit of 1/5s.`
     );
     await new Promise(resolve => setTimeout(resolve, 6000));
-  });
+  }
 
   console.log(`\n${'-'.repeat(60)}\n`);
 };

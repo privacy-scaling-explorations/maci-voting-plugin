@@ -26,7 +26,7 @@ jobs:
           node-version: 18
 
       - name: 'Install the dependencies'
-        run: 'yarn install --frozen-lockfile'
+        run: 'yarn install --frozen-lockfile --ignore-scripts'
 
       - name: 'Build the contracts'
         run: 'yarn build'
@@ -37,4 +37,6 @@ jobs:
         run: 'yarn coverage'
         env:
           NETWORK_NAME: ${{ vars.NETWORK_NAME }}
+          PLUGIN_REPO_FACTORY_ADDRESS: ${{ vars.PLUGIN_REPO_FACTORY_ADDRESS }}
+          MANAGEMENT_DAO_ADDRESS: ${{ vars.MANAGEMENT_DAO_ADDRESS }}
           ALCHEMY_API_KEY: ${{ secrets.ALCHEMY_API_KEY }}

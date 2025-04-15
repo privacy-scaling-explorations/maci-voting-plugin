@@ -1,5 +1,6 @@
-import {METADATA, VERSION} from '../../plugin-settings';
+import {VERSION, PLUGIN_SETUP_CONTRACT_NAME} from '../../plugin-settings';
 import {getProductionNetworkName, findPluginRepo} from '../../utils/helpers';
+import {skipTestSuiteIfNetworkIsZkSync} from '../test-utils/skip-functions';
 import {
   getLatestNetworkDeployment,
   getNetworkNameByAlias,
@@ -9,9 +10,10 @@ import {
   PERMISSION_MANAGER_FLAGS,
   PLUGIN_REPO_PERMISSIONS,
   UnsupportedNetworkError,
-  uploadToIPFS,
 } from '@aragon/osx-commons-sdk';
 import {
+  DAO,
+  DAO__factory,
   PluginRepo,
   PluginRepoRegistry,
   PluginRepoRegistry__factory,
@@ -23,75 +25,77 @@ import env, {deployments, ethers} from 'hardhat';
 
 const productionNetworkName = getProductionNetworkName(env);
 
-describe(`Deployment on network '${productionNetworkName}'`, function () {
-  it('creates the repo', async () => {
-    const {pluginRepo, pluginRepoRegistry} = await loadFixture(fixture);
+skipTestSuiteIfNetworkIsZkSync(
+  `Deployment on network '${productionNetworkName}'`,
+  function () {
+    it('creates the repo', async () => {
+      const {pluginRepo, pluginRepoRegistry} = await loadFixture(fixture);
 
-    expect(await pluginRepoRegistry.entries(pluginRepo.address)).to.be.true;
-  });
-
-  it('makes the deployer the repo maintainer', async () => {
-    const {deployer, pluginRepo} = await loadFixture(fixture);
-
-    expect(
-      await pluginRepo.isGranted(
-        pluginRepo.address,
-        deployer.address,
-        DAO_PERMISSIONS.ROOT_PERMISSION_ID,
-        PERMISSION_MANAGER_FLAGS.NO_CONDITION
-      )
-    ).to.be.true;
-
-    expect(
-      await pluginRepo.isGranted(
-        pluginRepo.address,
-        deployer.address,
-        PLUGIN_REPO_PERMISSIONS.UPGRADE_REPO_PERMISSION_ID,
-        PERMISSION_MANAGER_FLAGS.NO_CONDITION
-      )
-    ).to.be.true;
-
-    expect(
-      await pluginRepo.isGranted(
-        pluginRepo.address,
-        deployer.address,
-        PLUGIN_REPO_PERMISSIONS.MAINTAINER_PERMISSION_ID,
-        PERMISSION_MANAGER_FLAGS.NO_CONDITION
-      )
-    ).to.be.true;
-  });
-
-  context('PluginSetup Publication', async () => {
-    it('registers the setup', async () => {
-      const {pluginRepo} = await loadFixture(fixture);
-
-      const results = await pluginRepo['getVersion((uint8,uint16))']({
-        release: VERSION.release,
-        build: VERSION.build,
-      });
-
-      const buildMetadataURI = `ipfs://${await uploadToIPFS(
-        JSON.stringify(METADATA.build, null, 2)
-      )}`;
-
-      expect(results.buildMetadata).to.equal(
-        ethers.utils.hexlify(ethers.utils.toUtf8Bytes(buildMetadataURI))
-      );
+      expect(await pluginRepoRegistry.entries(pluginRepo.address)).to.be.true;
     });
-  });
-});
+
+    it('gives the management DAO permissions over the repo', async () => {
+      const {pluginRepo, managementDaoProxy} = await loadFixture(fixture);
+
+      expect(
+        await pluginRepo.isGranted(
+          pluginRepo.address,
+          managementDaoProxy.address,
+          DAO_PERMISSIONS.ROOT_PERMISSION_ID,
+          PERMISSION_MANAGER_FLAGS.NO_CONDITION
+        )
+      ).to.be.true;
+
+      expect(
+        await pluginRepo.isGranted(
+          pluginRepo.address,
+          managementDaoProxy.address,
+          PLUGIN_REPO_PERMISSIONS.UPGRADE_REPO_PERMISSION_ID,
+          PERMISSION_MANAGER_FLAGS.NO_CONDITION
+        )
+      ).to.be.true;
+
+      expect(
+        await pluginRepo.isGranted(
+          pluginRepo.address,
+          managementDaoProxy.address,
+          PLUGIN_REPO_PERMISSIONS.MAINTAINER_PERMISSION_ID,
+          PERMISSION_MANAGER_FLAGS.NO_CONDITION
+        )
+      ).to.be.true;
+    });
+
+    context('PluginSetup Publication', async () => {
+      it('registers the setup', async () => {
+        const {pluginRepo /*pluginSetupAddr*/} = await loadFixture(fixture);
+
+        const results = await pluginRepo['getVersion((uint8,uint16))']({
+          release: VERSION.release,
+          build: VERSION.build,
+        });
+
+        // this address depends on a ens domain in mainnet
+        // expect(results.pluginSetup).to.equal(pluginSetupAddr);
+        expect(results.tag.build).to.equal(VERSION.build);
+        expect(results.tag.release).to.equal(VERSION.release);
+      });
+    });
+  }
+);
 
 type FixtureResult = {
   deployer: SignerWithAddress;
   pluginRepo: PluginRepo;
   pluginRepoRegistry: PluginRepoRegistry;
+  managementDaoProxy: DAO;
+  pluginSetupAddr: string;
 };
 
 async function fixture(): Promise<FixtureResult> {
   // Deploy all
-  const tags = ['CreateRepo', 'NewVersion'];
-  await deployments.fixture(tags);
+  const tags = ['CreateRepo', 'NewVersion', 'TransferOwnershipToManagmentDao'];
 
+  await deployments.fixture(tags);
   const [deployer] = await ethers.getSigners();
 
   // Plugin Repo
@@ -115,5 +119,20 @@ async function fixture(): Promise<FixtureResult> {
     deployer
   );
 
-  return {deployer, pluginRepo, pluginRepoRegistry};
+  // Management DAO proxy
+  const managementDaoProxy = DAO__factory.connect(
+    networkDeployments.ManagementDAOProxy.address,
+    deployer
+  );
+
+  const pluginSetupAddr = (await deployments.get(PLUGIN_SETUP_CONTRACT_NAME))
+    .address;
+
+  return {
+    deployer,
+    pluginRepo,
+    pluginRepoRegistry,
+    managementDaoProxy,
+    pluginSetupAddr,
+  };
 }

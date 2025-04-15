@@ -1,25 +1,23 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+
 pragma solidity ^0.8.20;
 
 import {PluginUUPSUpgradeable} from "@aragon/osx-commons-contracts/src/plugin/PluginUUPSUpgradeable.sol";
-import {IDAO} from "@aragon/osx-commons-contracts/src/dao/IDAO.sol";
-import {Action} from "@aragon/osx-commons-contracts/src/executors/IExecutor.sol";
-import {IProposal} from "@aragon/osx-commons-contracts/src/plugin/extensions/proposal/IProposal.sol";
 import {ProposalUpgradeable} from "@aragon/osx-commons-contracts/src/plugin/extensions/proposal/ProposalUpgradeable.sol";
-import {RATIO_BASE, _applyRatioCeiled} from "./Utils.sol";
 import {IMaciVoting} from "./IMaciVoting.sol";
 
-import {IVotesUpgradeable} from "@openzeppelin/contracts-upgradeable/governance/utils/IVotesUpgradeable.sol";
 import {SafeCastUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/math/SafeCastUpgradeable.sol";
-import {IERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
-import {IMACI} from "maci-contracts/contracts/interfaces/IMACI.sol";
+import {IVotesUpgradeable} from "@openzeppelin/contracts-upgradeable/governance/utils/IVotesUpgradeable.sol";
 import {MACI} from "maci-contracts/contracts/MACI.sol";
-import {IPoll} from "maci-contracts/contracts/interfaces/IPoll.sol";
-import {Poll} from "maci-contracts/contracts/Poll.sol";
-import {ITally} from "maci-contracts/contracts/interfaces/ITally.sol";
-import {Tally} from "maci-contracts/contracts/Tally.sol";
-import {Params} from "maci-contracts/contracts/utilities/Params.sol";
 import {DomainObjs} from "maci-contracts/contracts/utilities/DomainObjs.sol";
+import {Action} from "@aragon/osx-commons-contracts/src/executors/IExecutor.sol";
+import {IDAO} from "@aragon/osx-commons-contracts/src/dao/IDAO.sol";
+import {IMACI} from "maci-contracts/contracts/interfaces/IMACI.sol";
+import {Params} from "maci-contracts/contracts/utilities/Params.sol";
+import {IProposal} from "@aragon/osx-commons-contracts/src/plugin/extensions/proposal/IProposal.sol";
+import {Tally} from "maci-contracts/contracts/Tally.sol";
+
+import {_applyRatioCeiled} from "./Utils.sol";
 
 /// @title MaciVoting
 /// @dev Release 1, Build 1
@@ -27,7 +25,6 @@ import {DomainObjs} from "maci-contracts/contracts/utilities/DomainObjs.sol";
 /// Voters can vote for option 0 or 1 (yes or no)
 /// Abstain - signed up but not voted (needs changes in the MACI protocol to keep track of that)
 /// What about minimum participation?
-/// TODO: Maybe inheriting from MACI directly?
 contract MaciVoting is PluginUUPSUpgradeable, ProposalUpgradeable, IMaciVoting {
     using SafeCastUpgradeable for uint256;
 
@@ -35,14 +32,14 @@ contract MaciVoting is PluginUUPSUpgradeable, ProposalUpgradeable, IMaciVoting {
     bytes4 internal constant MACI_VOTING_INTERFACE_ID =
         this.initialize.selector ^ this.getVotingToken.selector;
 
-    /// @notice An [OpenZeppelin `Votes`](https://docs.openzeppelin.com/contracts/4.x/api/governance#Votes) compatible contract referencing the token being used for voting.
-    IVotesUpgradeable private votingToken;
-
     /// @notice The ID of the permission required to call the `storeNumber` function.
     bytes32 public constant CREATE_PROPOSAL_PERMISSION_ID = keccak256("CREATE_PROPOSAL_PERMISSION");
 
     /// @notice The ID of the permission required to call the `execute` function.
     bytes32 public constant EXECUTE_PERMISSION_ID = keccak256("EXECUTE_PERMISSION");
+
+    /// @notice An [OpenZeppelin `Votes`](https://docs.openzeppelin.com/contracts/4.x/api/governance#Votes) compatible contract referencing the token being used for voting.
+    IVotesUpgradeable private votingToken;
 
     /// @notice The address of the maci contract.
     MACI public maci;
@@ -69,8 +66,11 @@ contract MaciVoting is PluginUUPSUpgradeable, ProposalUpgradeable, IMaciVoting {
     /// @notice Thrown when a proposal doesn't exist.
     /// @param proposalId The ID of the proposal which doesn't exist.
     error NonexistentProposal(uint256 proposalId);
-
+    /// @notice Thrown when the caller doesn't have enough voting power.
     error NoVotingPower();
+    /// @notice Thrown when the proposal is not in the voting period.
+    /// @param limit The bound limit (start or end date).
+    /// @param actual The actual time.
     error DateOutOfBounds(uint64 limit, uint64 actual);
 
     /// @notice A container for the proposal parameters at the time of proposal creation.
@@ -137,6 +137,23 @@ contract MaciVoting is PluginUUPSUpgradeable, ProposalUpgradeable, IMaciVoting {
         votingSettings = _votingSettings;
     }
 
+    /// @notice Checks if this or the parent contract supports an interface by its ID.
+    /// @param _interfaceId The ID of the interface.
+    /// @return Returns `true` if the interface is supported.
+    function supportsInterface(
+        bytes4 _interfaceId
+    ) public view virtual override(PluginUUPSUpgradeable, ProposalUpgradeable) returns (bool) {
+        return _interfaceId == MACI_VOTING_INTERFACE_ID || super.supportsInterface(_interfaceId);
+    }
+
+    function customProposalParamsABI() external pure override(IProposal) returns (string memory) {
+        return "(uint256 allowFailureMap, uint8 voteOption, bool tryEarlyExecution)";
+    }
+
+    function upgradeTo(address newAddress) public pure override {
+        require(newAddress != address(0), "Not allowed");
+    }
+
     /// @notice Returns the minimum voting power required to create a proposal stored in the voting settings.
     /// @return The minimum voting power required to create a proposal.
     function minProposerVotingPower() public view virtual returns (uint256) {
@@ -147,28 +164,18 @@ contract MaciVoting is PluginUUPSUpgradeable, ProposalUpgradeable, IMaciVoting {
         return votingToken.getPastTotalSupply(_blockNumber);
     }
 
+    /// @notice get the voting token interface
+    /// @return The voting token interface.
     function getVotingToken() public view returns (IVotesUpgradeable) {
         return votingToken;
     }
 
-    /// @dev Helper function to avoid stack too deep in non via-ir compilation mode.
-    function _emitProposalCreatedEvent(
-        bytes calldata _metadata,
-        Action[] calldata _actions,
-        uint256 _allowFailureMap,
-        uint256 proposalId,
-        uint64 _startDate,
-        uint64 _endDate
-    ) private {
-        emit ProposalCreated(
-            proposalId,
-            _msgSender(),
-            _startDate,
-            _endDate,
-            _metadata,
-            _actions,
-            _allowFailureMap
-        );
+    function minParticipation() public view virtual returns (uint32) {
+        return votingSettings.minParticipation;
+    }
+
+    function hasSucceeded(uint256 _proposalId) external view override(IProposal) returns (bool) {
+        return proposals[_proposalId].executed;
     }
 
     /// @notice Deploy a poll in MACI
@@ -209,6 +216,60 @@ contract MaciVoting is PluginUUPSUpgradeable, ProposalUpgradeable, IMaciVoting {
         return (pollId, pollContracts);
     }
 
+    /// @notice Validates and returns the proposal vote dates.
+    /// @param _start The start date of the proposal vote. If 0, the current timestamp is used and the vote starts immediately.
+    /// @param _end The end date of the proposal vote. If 0, `_start + minDuration` is used.
+    /// @return startDate The validated start date of the proposal vote.
+    /// @return endDate The validated end date of the proposal vote.
+    function _validateProposalDates(
+        uint64 _start,
+        uint64 _end
+    ) internal view virtual returns (uint64 startDate, uint64 endDate) {
+        uint64 currentTimestamp = block.timestamp.toUint64();
+
+        if (_start == 0) {
+            startDate = currentTimestamp;
+        } else {
+            startDate = _start;
+
+            if (startDate < currentTimestamp) {
+                revert DateOutOfBounds({limit: currentTimestamp, actual: startDate});
+            }
+        }
+
+        uint64 earliestEndDate = startDate + votingSettings.minDuration; // Since `minDuration` is limited to 1 year, `startDate + minDuration` can only overflow if the `startDate` is after `type(uint64).max - minDuration`. In this case, the proposal creation will revert and another date can be picked.
+
+        if (_end == 0) {
+            endDate = earliestEndDate;
+        } else {
+            endDate = _end;
+
+            if (endDate < earliestEndDate) {
+                revert DateOutOfBounds({limit: earliestEndDate, actual: endDate});
+            }
+        }
+    }
+
+    /// @dev Helper function to avoid stack too deep in non via-ir compilation mode.
+    function _emitProposalCreatedEvent(
+        bytes calldata _metadata,
+        Action[] calldata _actions,
+        uint256 _allowFailureMap,
+        uint256 proposalId,
+        uint64 _startDate,
+        uint64 _endDate
+    ) private {
+        emit ProposalCreated(
+            proposalId,
+            _msgSender(),
+            _startDate,
+            _endDate,
+            _metadata,
+            _actions,
+            _allowFailureMap
+        );
+    }
+
     /// @notice Creates a proposal.
     /// @param _metadata The metadata of the proposal.
     /// @param _actions The actions of the proposal.
@@ -229,7 +290,7 @@ contract MaciVoting is PluginUUPSUpgradeable, ProposalUpgradeable, IMaciVoting {
                 // Because of the checks in `TokenVotingSetup`, we can assume that `votingToken` is an [ERC-20](https://eips.ethereum.org/EIPS/eip-20) token.
                 if (
                     votingToken.getVotes(_msgSender()) < minProposerVotingPower_ &&
-                    IERC20Upgradeable(address(votingToken)).balanceOf(_msgSender()) <
+                    IVotesUpgradeable(address(votingToken)).getVotes(_msgSender()) <
                     minProposerVotingPower_
                 ) {
                     revert ProposalCreationForbidden(_msgSender());
@@ -316,20 +377,6 @@ contract MaciVoting is PluginUUPSUpgradeable, ProposalUpgradeable, IMaciVoting {
         proposalId = createProposal(_metadata, _actions, allowFailureMap, _startDate, _endDate);
     }
 
-    /// @notice Votes for a proposal.
-    /// @param _proposalId The ID of the proposal.
-    /// @param _message The message containing your encrypted vote
-    /// @param _encPubKey The public key of the voter
-    function vote(
-        uint256 _proposalId,
-        DomainObjs.Message calldata _message,
-        DomainObjs.PubKey calldata _encPubKey
-    ) public {
-        Proposal memory proposal_ = proposals[_proposalId];
-
-        IPoll(proposal_.pollAddress).publishMessage(_message, _encPubKey);
-    }
-
     /// @notice Internal function to check if a proposal can be executed. It assumes the queried proposal exists.
     /// @param _proposalId The ID of the proposal.
     /// @return True if the proposal can be executed, false otherwise.
@@ -408,82 +455,5 @@ contract MaciVoting is PluginUUPSUpgradeable, ProposalUpgradeable, IMaciVoting {
         );
 
         emit ProposalExecuted(_proposalId);
-    }
-
-    /**
-     * Gatekeeper function to register users
-     */
-    function register(
-        DomainObjs.PubKey calldata _pubKey,
-        bytes memory _signUpGatekeeperData
-    ) public {
-        maci.signUp(_pubKey, _signUpGatekeeperData);
-    }
-
-    /// @notice Function to get the voice credits of a user based on their token balances
-    /// @dev Delegate voting power TODO
-    function getVoiceCredits(address _address, bytes memory _data) public view returns (uint256) {
-        uint256 snapshotBlock = abi.decode(_data, (uint256));
-        uint256 votingPower = votingToken.getPastVotes(_address, snapshotBlock);
-        return votingPower;
-    }
-
-    function minParticipation() public view virtual returns (uint32) {
-        return votingSettings.minParticipation;
-    }
-
-    /** DELETE FROM HERE */
-    function hasSucceeded(uint256 _proposalId) external view override(IProposal) returns (bool) {
-        return proposals[_proposalId].executed;
-    }
-
-    // @TODO NICO: what does this function do?
-    /// @inheritdoc IProposal
-    function customProposalParamsABI() external pure override(IProposal) returns (string memory) {
-        return "(uint256 allowFailureMap, uint8 voteOption, bool tryEarlyExecution)";
-    }
-    /** TO HERE */
-
-    /// @notice Validates and returns the proposal vote dates.
-    /// @param _start The start date of the proposal vote. If 0, the current timestamp is used and the vote starts immediately.
-    /// @param _end The end date of the proposal vote. If 0, `_start + minDuration` is used.
-    /// @return startDate The validated start date of the proposal vote.
-    /// @return endDate The validated end date of the proposal vote.
-    function _validateProposalDates(
-        uint64 _start,
-        uint64 _end
-    ) internal view virtual returns (uint64 startDate, uint64 endDate) {
-        uint64 currentTimestamp = block.timestamp.toUint64();
-
-        if (_start == 0) {
-            startDate = currentTimestamp;
-        } else {
-            startDate = _start;
-
-            if (startDate < currentTimestamp) {
-                revert DateOutOfBounds({limit: currentTimestamp, actual: startDate});
-            }
-        }
-
-        uint64 earliestEndDate = startDate + votingSettings.minDuration; // Since `minDuration` is limited to 1 year, `startDate + minDuration` can only overflow if the `startDate` is after `type(uint64).max - minDuration`. In this case, the proposal creation will revert and another date can be picked.
-
-        if (_end == 0) {
-            endDate = earliestEndDate;
-        } else {
-            endDate = _end;
-
-            if (endDate < earliestEndDate) {
-                revert DateOutOfBounds({limit: earliestEndDate, actual: endDate});
-            }
-        }
-    }
-
-    /// @notice Checks if this or the parent contract supports an interface by its ID.
-    /// @param _interfaceId The ID of the interface.
-    /// @return Returns `true` if the interface is supported.
-    function supportsInterface(
-        bytes4 _interfaceId
-    ) public view virtual override(PluginUUPSUpgradeable, ProposalUpgradeable) returns (bool) {
-        return _interfaceId == MACI_VOTING_INTERFACE_ID || super.supportsInterface(_interfaceId);
     }
 }

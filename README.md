@@ -1,39 +1,23 @@
-# Aragon OSX Plugin Template [![Hardhat][hardhat-badge]][hardhat] [![License: AGPL v3][license-badge]][license]
+# Token Voting Plugin [![Hardhat][hardhat-badge]][hardhat] [![License: AGPL v3][license-badge]][license]
 
 [hardhat]: https://hardhat.org/
 [hardhat-badge]: https://img.shields.io/badge/Built%20with-Hardhat-FFDB1C.svg
 [license]: https://opensource.org/licenses/AGPL-v3
 [license-badge]: https://img.shields.io/badge/License-AGPL_v3-blue.svg
 
-## Quickstart
+## Audit
 
-After [creating a new repository from this template](https://github.com/new?template_name=osx-plugin-template-hardhat&template_owner=aragon), cloning, and opening it in your IDE, create an `.env` file from the `.env.example` file and put in the Alchemy API key. Feel free to add other API keys for the services that you want to use. Now run,
+### v1.3.0
 
-```sh
-yarn install && cd packages/contracts && yarn install && yarn build && yarn typechain
-```
+**Halborn**: [audit report](https://github.com/aragon/osx/tree/main/audits/Halborn_AragonOSx_v1_4_Smart_Contract_Security_Assessment_Report_2025_01_03.pdf)
 
-You can now develop a plugin by changing the `src/MyPlugin.sol` and `src/MyPluginSetup.sol` files. You can directly import contracts from [Aragon OSx](https://github.com/aragon/osx) as well as OpenZeppelin's [openzeppelin-contracts](https://github.com/OpenZeppelin/openzeppelin-contracts) and [openzeppelin-contracts-upgradeable](https://github.com/OpenZeppelin/openzeppelin-contracts-upgradeable) that are already set up for you.
+- Commit ID: [02a7dbb95c42ebd2226117bf85a0fe330c788948](https://github.com/aragon/token-voting-plugin/commit/02a7dbb95c42ebd2226117bf85a0fe330c788948)
+- Started: 2024-11-18
+- Finished: 2025-02-13
 
-```sol
-// SPDX-License-Identifier: AGPL-3.0-or-later
-pragma solidity ^0.8.17;
+## ABI and artifacts
 
-import {IDAO, PluginUUPSUpgradeable} from "@aragon/osx/core/plugin/PluginUUPSUpgradeable.sol";
-import {SafeCastUpgradeable} from '@openzeppelin/contracts-upgradeable/utils/math/SafeCastUpgradeable.sol';
-
-contract MyPlugin is PluginUUPSUpgradeable {
-    //...
-};
-```
-
-The initial `MyPlugin` and `MyPluginSetup` example comes with unit test, integration test, and test helpers in the `package/contracts/test` folder that you can reuse.
-
-To build and test your contracts, run
-
-```sh
-yarn clean && yarn build && yarn test
-```
+Check out the [artifacts folder](./packages/artifacts/README.md) to get the deployed addresses and the contract ABI's.
 
 ## Project
 
@@ -41,19 +25,17 @@ The root folder of the repo includes two subfolders:
 
 ```markdown
 .
+├── packages/artifacts
+│ ├── src
+│ ├── prepare-abi.sh
+│ ├── README.md
+│ ├── ...
+| └── package.json
+|
 ├── packages/contracts
 │ ├── src
 │ ├── deploy
 │ ├── test
-│ ├── utils
-│ ├── ...
-│ └── package.json
-│
-├── packages/subgraph
-│ ├── src
-│ ├── scripts
-│ ├── manifest
-│ ├── tests
 │ ├── utils
 │ ├── ...
 │ └── package.json
@@ -65,7 +47,7 @@ The root folder of the repo includes two subfolders:
 The root-level `package.json` file contains global `dev-dependencies` for formatting and linting. After installing the dependencies with
 
 ```sh
-yarn install
+yarn --ignore-scripts
 ```
 
 you can run the associated [formatting](#formatting) and [linting](#linting) commands.
@@ -99,48 +81,48 @@ yarn lint
 To be able to work on the contracts, make sure that you have created an `.env` file from the `.env.example` file and put in the API keys for
 
 - [Alchemy](https://www.alchemy.com) that we use as the web3 provider
-- [Alchemy Subgraphs](https://www.alchemy.com/subgraphs) that we use as the subgraph provider
 - the block explorer that you want to use depending on the networks that you want to deploy to
 
 Before deploying, you MUST also change the default hardhat private key (`PRIVATE_KEY="0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"`).
 
+Note that if using some networks (e.g. sepolia), fork tests will be unable to find early versions of the build.
+
 ## Contracts
 
-In `packages/contracts`, first run
+This package is located in `packages/contracts`.
+
+### Install Dependencies
 
 ```sh
-yarn install
+yarn --ignore-scripts
 ```
 
 ### Building
 
-First build the contracts and
+To build the contracts on EVM based networks:
 
 ```sh
 yarn build
 ```
 
-and generate the [typechain TypeScript bindings](https://github.com/dethcrypto/TypeChain) with
+On Zksync:
 
 ```sh
-yarn typechain
+yarn build:zksync
 ```
-
-During development of your smart contracts, changes can result in altered typechain bindings.
-You can remove the outdated build- and typechain-related files with
-
-```sh
-yarn clean
-```
-
-which will execute `yarn typechain` again. For convenience, use `yarn clean && yarn build`.
 
 ### Testing
 
-To test your contracts, run
+To test your contracts on EVM based networks, run
 
 ```sh
 yarn test
+```
+
+On Zksync:
+
+```sh
+yarn test:zksync
 ```
 
 ### Linting
@@ -202,20 +184,36 @@ yarn deploy --tags CreateRepo,NewVersion
 ```
 
 This will create a plugin repo and publish the first version (`v1.1`) of your plugin.
-
-Deploy the contracts to sepolia with
+By adding the tag `TransferOwnershipToManagmentDao`, the `ROOT_PERMISSION_ID`, `MAINTAINER_PERMISSION_ID`, and
+`UPGRADE_REPO_PERMISSION_ID` are granted to the management DAO and revoked from the deployer.
+You can do this directly
 
 ```sh
-yarn deploy --network sepolia --tags CreateRepo,NewVersion,Verification
+yarn deploy --tags CreateRepo,NewVersion,TransferOwnershipToManagmentDao
 ```
 
-This will create a plugin repo, publish the first version (`v1.1`) of your plugin, and verfiy the contracts on sepolia.
+or at a later point by executing
+
+```sh
+yarn deploy --tags TransferOwnershipToManagmentDao
+```
+
+To deploy the contracts to a production network use the `--network` option, for example
+
+```sh
+yarn deploy --network sepolia --tags CreateRepo,NewVersion,TransferOwnershipToManagmentDao,Verification
+```
+
+This will create a plugin repo, publish the first version (`v1.1`) of your plugin, transfer permissions to the
+management DAO, and lastly verfiy the contracts on sepolia.
 
 If you want to deploy a new version of your plugin afterwards (e.g., `1.2`), simply change the `VERSION` entry in the `packages/contracts/plugin-settings.ts` file and use
 
 ```sh
 yarn deploy --network sepolia --tags NewVersion,Verification
 ```
+
+Note, that if the deploying account doesn't own the repo anymore, this will create a `createVersionProposalData-sepolia.json` containing the data for a management DAO signer to create a proposal publishing a new version.
 
 Note, that if you include the `CreateRepo` tag after you've created your plugin repo already, this part of the script will be skipped.
 
@@ -236,94 +234,14 @@ yarn deploy --network sepolia --tags UpgradeRepo
 This will upgrade your plugin repo to the latest Aragon OSx protocol version implementation, which might include new features and security updates.
 **For this to work, make sure that you are using the latest version of [this repository](https://github.com/aragon/osx-plugin-template-hardhat) in your fork.**
 
-## Subgraph
+Note, that if the deploying account doesn't own the repo anymore, this will create a `upgradeRepoProposalData-sepolia.json` containing the data for a management DAO signer to create a proposal upgrading the repo.
 
-### Installing
-
-In `packages/subgraph`, first run
+If you want to run deployments against zksync, you can use:
 
 ```sh
-yarn install
+yarn deploy:zksync --network zksyncSepolia --tags ...
+yarn deploy:zksync --network zksyncMainnet --tags ...
 ```
-
-which will also run
-
-```sh
-yarn postinstall
-```
-
-subsequently, to build the ABI in the `imported` folder.
-
-### Building
-
-Build the subgraph and
-
-```sh
-yarn build
-```
-
-which will first build the contracts (see [Contracts / Building](#building)) with
-
-```
-yarn build:contracts
-```
-
-second the subgraph manifest with
-
-```sh
-yarn build:manifest
-```
-
-and finally the subgraph itself with
-
-```
-yarn build:subgraph
-```
-
-When running `yarn build`, it requires a plugin address, which is obtained from the configuration file located
-at `subgraph/manifest/data/<network>.json`, based on the network specified in your `.env` file under the `SUBGRAPH_NETWORK_NAME` variable.
-You do not need to provide a plugin address for building or testing purposes, but it becomes necessary when deploying the subgraph.
-
-During development of the subgraph, you might want to clean outdated files that were build, imported, and generated. To do this, run
-
-```sh
-yarn clean
-```
-
-### Testing
-
-Test the subgraph with
-
-```sh
-yarn test
-```
-
-### Linting
-
-Lint the TypeScript code with
-
-```sh
-yarn lint
-```
-
-### Coverage
-
-Generate the code coverage with
-
-```sh
-yarn coverage
-```
-
-### Deployment
-
-To deploy the subgraph to the subgraph provider, write your intended subgraph name and version into the `SUBGRAPH_NAME` and `SUBGRAPH_VERSION` variables [in the `.env` file that you created in the beginning](environment-variables) and pick a network name `SUBGRAPH_NETWORK_NAME` [being supported by the subgraph provider](https://docs.alchemy.com/reference/supported-subgraph-chains). Remember to place correctly the Plugin address on the network you are going to deploy to, you can do that by adding it on `subgraph/manifest/data/<network>.json`.
-Then run
-
-```sh
-yarn deploy
-```
-
-to deploy the subgraph and check your [Alchemy subgraph dashboard](https://subgraphs.alchemy.com/onboarding) for completion and possible errors.
 
 ## License
 

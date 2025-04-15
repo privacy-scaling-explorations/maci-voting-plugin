@@ -16,3 +16,5 @@ ignorePatterns:
   - typechain
   # files
   - coverage.json
+  - docs/config.js
+  - scripts/gen-nav.js

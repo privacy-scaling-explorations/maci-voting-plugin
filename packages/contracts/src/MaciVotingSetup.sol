@@ -2,18 +2,19 @@
 
 pragma solidity ^0.8.20;
 
-import {PermissionLib} from "@aragon/osx-commons-contracts/src/permission/PermissionLib.sol";
-import {ProxyLib} from "@aragon/osx-commons-contracts/src/utils/deployment/ProxyLib.sol";
 import {PluginUpgradeableSetup} from "@aragon/osx-commons-contracts/src/plugin/setup/PluginUpgradeableSetup.sol";
+import {ProxyLib} from "@aragon/osx-commons-contracts/src/utils/deployment/ProxyLib.sol";
 import {IPluginSetup} from "@aragon/osx-commons-contracts/src/plugin/setup/IPluginSetup.sol";
+import {PermissionLib} from "@aragon/osx-commons-contracts/src/permission/PermissionLib.sol";
 import {IDAO} from "@aragon/osx-commons-contracts/src/dao/IDAO.sol";
 
 import {DomainObjs} from "maci-contracts/contracts/utilities/DomainObjs.sol";
-import {MaciVoting} from "./MaciVoting.sol";
 import {IMaciVoting} from "./IMaciVoting.sol";
+import {MaciVoting} from "./MaciVoting.sol";
 
 /// @title MaciVotingSetup
 /// @dev Release 1, Build 1
+// @custom:oz-upgrades-unsafe-allow state-variable-immutable
 contract MaciVotingSetup is PluginUpgradeableSetup {
     using ProxyLib for address;
 
@@ -44,7 +45,7 @@ contract MaciVotingSetup is PluginUpgradeableSetup {
         );
 
         PermissionLib.MultiTargetPermission[]
-            memory permissions = new PermissionLib.MultiTargetPermission[](1);
+            memory permissions = new PermissionLib.MultiTargetPermission[](2);
 
         permissions[0] = PermissionLib.MultiTargetPermission({
             operation: PermissionLib.Operation.Grant,
@@ -80,7 +81,7 @@ contract MaciVotingSetup is PluginUpgradeableSetup {
         address _dao,
         SetupPayload calldata _payload
     ) external pure returns (PermissionLib.MultiTargetPermission[] memory permissions) {
-        permissions = new PermissionLib.MultiTargetPermission[](1);
+        permissions = new PermissionLib.MultiTargetPermission[](2);
 
         permissions[0] = PermissionLib.MultiTargetPermission({
             operation: PermissionLib.Operation.Revoke,

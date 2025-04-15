@@ -5,6 +5,8 @@ import path from 'path';
 
 /**
  * Deploys the plugin setup contract with the plugin implementation inside.
+ * In the case of the token voting plugin, we also need to deploy the governance ERC20
+ * and the wrapped variants.
  * @param {HardhatRuntimeEnvironment} hre
  */
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {

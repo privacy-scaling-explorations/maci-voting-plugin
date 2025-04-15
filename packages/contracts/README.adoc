@@ -1,0 +1,14 @@
+= TokenVoting API
+
+== Core
+
+{{TokenVoting}}
+
+{{MajorityVotingBase}}
+
+{{TokenVotingSetup}}
+
+{{VotingPowerCondition}}
+
+
+

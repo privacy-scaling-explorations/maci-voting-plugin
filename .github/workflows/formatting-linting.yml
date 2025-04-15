@@ -19,7 +19,7 @@ jobs:
           node-version: 18
 
       - name: 'Install the dependencies'
-        run: 'yarn install --frozen-lockfile'
+        run: 'yarn install --frozen-lockfile --ignore-scripts'
 
       - name: 'Check code formatting'
         run: 'yarn prettier:check'
@@ -29,6 +29,3 @@ jobs:
 
       - name: 'Lint contracts ts and js'
         run: 'yarn lint:contracts:ts'
-
-      - name: 'Lint subgraph ts and js'
-        run: 'yarn lint:subgraph:ts'

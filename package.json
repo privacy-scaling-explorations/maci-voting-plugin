@@ -1,20 +1,18 @@
 {
-  "name": "@aragon/osx-plugin-template",
-  "description": "A template to fork from when developing an Aragon OSx plugin",
-  "version": "0.0.1-alpha.1",
+  "name": "@aragon/maci-voting-plugin",
+  "description": "A plugin for Aragon DAOs to enable MACI-style voting.",
   "license": "AGPL-3.0-or-later",
   "author": {
-    "name": "Aragon",
-    "url": "https://github.com/aragon"
+    "name": "PSE",
+    "url": "https://pse.dev"
   },
-  "private": true,
+  "private": false,
   "scripts": {
     "prettier:check": "prettier --check \"**/*.{js,json,md,sol,ts,yml}\"",
     "prettier:write": "prettier --write \"**/*.{js,json,md,sol,ts,yml}\"",
     "lint:contracts:sol": "solhint --max-warnings 0 \"packages/contracts/src/**/*.sol\"",
     "lint:contracts:ts": "eslint --ext .js,.ts ./packages/contracts/",
-    "lint:subgraph:ts": "eslint --ext .js,.ts ./packages/subgraph/",
-    "lint": "yarn run lint:contracts:sol; yarn run lint:contracts:ts; yarn run lint:subgraph:ts"
+    "lint": "yarn run lint:contracts:sol; yarn run lint:contracts:ts"
   },
   "devDependencies": {
     "@trivago/prettier-plugin-sort-imports": "^4.1.1",

@@ -1,15 +1,35 @@
 {
   "ui": {},
-  "change": "Initial build.",
+  "change": "v1.3\n - Removed an unneccessary permission that allowed the Dao to upgrade the plugin, because this is supposed to happens as part of the update itself. The unnecessary permission, which was granted on installation of previous versions, will be automatically removed with the update to this version.\n - Allowed the DAO to still mint new tokens after uninstallation by not revoking the associated permission.",
   "pluginSetup": {
     "prepareInstallation": {
       "description": "The information required for the installation of build 1.",
       "inputs": [
         {
-          "name": "_maci",
+          "name": "maci",
           "type": "address",
           "internalType": "address",
           "description": "The deploy maci contract address."
+        },
+        {
+          "components": [
+            {
+              "name": "x",
+              "type": "uint256",
+              "internalType": "uint256",
+              "description": "The x coordinate of the public key."
+            },
+            {
+              "name": "y",
+              "type": "uint256",
+              "internalType": "uint256",
+              "description": "The y coordinate of the public key."
+            }
+          ],
+          "name": "publicKey",
+          "type": "tuple",
+          "internalType": "struct DomainObjs.PubKey",
+          "description": "The maci coordinator public key."
         },
         {
           "components": [
@@ -41,7 +61,7 @@
     },
     "prepareUpdate": {},
     "prepareUninstallation": {
-      "description": "The information required for the uninstallation of build 1.",
+      "description": "No input is required for the uninstallation.",
       "inputs": []
     }
   }

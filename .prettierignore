@@ -15,6 +15,9 @@ imported
 generated
 */js-client/test/integration/*.test.ts
 
+packages/contracts/docs/templates/contract.hbs
+packages/contracts/docs/templates/page.hbs
+
 # files
 *.env
 *.log

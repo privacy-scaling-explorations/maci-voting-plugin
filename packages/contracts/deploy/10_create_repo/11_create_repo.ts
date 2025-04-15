@@ -1,22 +1,19 @@
-import {PLUGIN_REPO_ENS_SUBDOMAIN_NAME} from '../../plugin-settings';
+import {
+  PLUGIN_REPO_ENS_SUBDOMAIN_NAME,
+  PLUGIN_REPO_PROXY_NAME,
+} from '../../plugin-settings';
 import {
   findPluginRepo,
   getProductionNetworkName,
   pluginEnsDomain,
+  getPluginRepoFactory,
+  frameworkSupportsENS,
 } from '../../utils/helpers';
-import {
-  getLatestNetworkDeployment,
-  getNetworkNameByAlias,
-} from '@aragon/osx-commons-configs';
-import {
-  UnsupportedNetworkError,
-  findEventTopicLog,
-} from '@aragon/osx-commons-sdk';
+import {findEventTopicLog} from '@aragon/osx-commons-sdk';
 import {
   PluginRepoRegistryEvents,
   PluginRepoRegistry__factory,
   PluginRepo__factory,
-  PluginRepoFactory__factory,
 } from '@aragon/osx-ethers';
 import {DeployFunction} from 'hardhat-deploy/types';
 import {HardhatRuntimeEnvironment} from 'hardhat/types';
@@ -27,32 +24,21 @@ import path from 'path';
  * @param {HardhatRuntimeEnvironment} hre
  */
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
-  console.log(
-    `Creating the '${pluginEnsDomain(
-      hre
-    )}' plugin repo through Aragon's 'PluginRepoFactory'...`
-  );
+  console.log(`Creating plugin repo through Aragon's 'PluginRepoFactory'...`);
 
   const [deployer] = await hre.ethers.getSigners();
 
-  // Get the Aragon `PluginRepoFactory` from the `osx-commons-configs`
-  const productionNetworkName = getProductionNetworkName(hre);
-  const network = getNetworkNameByAlias(productionNetworkName);
-  if (network === null) {
-    throw new UnsupportedNetworkError(productionNetworkName);
-  }
-  const networkDeployments = getLatestNetworkDeployment(network);
-  if (networkDeployments === null) {
-    throw `Deployments are not available on network ${network}.`;
-  }
-  const pluginRepoFactory = PluginRepoFactory__factory.connect(
-    networkDeployments.PluginRepoFactory.address,
-    deployer
-  );
+  // Get the Aragon `PluginRepoFactory`
+  const pluginRepoFactory = await getPluginRepoFactory(hre);
+
+  // if the framework supports ENS, use the subdomain from the `./plugin-settings.ts` file
+  // otherwise, use an empty string
+  const supportsENS = await frameworkSupportsENS(pluginRepoFactory);
+  const subdomain = supportsENS ? PLUGIN_REPO_ENS_SUBDOMAIN_NAME : '';
 
   // Create the `PluginRepo` through the Aragon `PluginRepoFactory`
   const tx = await pluginRepoFactory.createPluginRepo(
-    PLUGIN_REPO_ENS_SUBDOMAIN_NAME,
+    subdomain,
     deployer.address
   );
 
@@ -69,8 +55,18 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     deployer
   );
 
+  // Save the plugin repo deployment
+  await hre.deployments.save(PLUGIN_REPO_PROXY_NAME, {
+    abi: PluginRepo__factory.abi,
+    address: pluginRepo.address,
+    receipt: await tx.wait(),
+    transactionHash: tx.hash,
+  });
+
   console.log(
-    `PluginRepo '${pluginEnsDomain(hre)}' deployed at '${pluginRepo.address}'.`
+    `PluginRepo ${
+      supportsENS ? 'with ens:' + pluginEnsDomain(hre) : 'without ens'
+    }  deployed at '${pluginRepo.address}'.`
   );
 
   hre.aragonToVerifyContracts.push({
@@ -90,11 +86,11 @@ func.skip = async (hre: HardhatRuntimeEnvironment) => {
   console.log(`\n🏗️  ${path.basename(__filename)}:`);
 
   // Check if the ens record exists already
-  const {pluginRepo, ensDomain} = await findPluginRepo(hre);
+  const {pluginRepo} = await findPluginRepo(hre);
 
   if (pluginRepo !== null) {
     console.log(
-      `ENS name '${ensDomain}' was claimed already at '${
+      `Plugin Repo already deployed at '${
         pluginRepo.address
       }' on network '${getProductionNetworkName(hre)}'. Skipping deployment...`
     );
@@ -106,7 +102,7 @@ func.skip = async (hre: HardhatRuntimeEnvironment) => {
 
     return true;
   } else {
-    console.log(`ENS name '${ensDomain}' is unclaimed. Deploying...`);
+    console.log('Deploying Plugin Repo');
 
     return false;
   }
