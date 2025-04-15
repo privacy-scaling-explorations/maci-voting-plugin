@@ -8,8 +8,8 @@ import {
 } from '../test-utils/maci-voting-constants';
 import {skipTestSuiteIfNetworkIsZkSync} from '../test-utils/skip-functions';
 import {
-  TokenVotingSetup,
-  TokenVotingSetup__factory,
+  MaciVotingSetup,
+  MaciVotingSetup__factory,
 } from '../test-utils/typechain-versions';
 import {createDaoProxy} from './test-helpers';
 import {
@@ -43,7 +43,7 @@ type FixtureResult = {
   dao: DAO;
   psp: PluginSetupProcessor;
   pluginRepo: PluginRepo;
-  pluginSetup: TokenVotingSetup;
+  pluginSetup: MaciVotingSetup;
   pluginSetupRefLatestBuild: PluginSetupProcessorStructs.PluginSetupRefStruct;
   defaultMaci: string;
   defaultCoordinatorPubKey: {x: BigNumberish; y: BigNumberish};
@@ -85,7 +85,7 @@ async function fixture(): Promise<FixtureResult> {
   const release = 1;
   const latestVersion = await pluginRepo['getLatestVersion(uint8)'](release);
 
-  const pluginSetup = TokenVotingSetup__factory.connect(
+  const pluginSetup = MaciVotingSetup__factory.connect(
     latestVersion.pluginSetup,
     deployer
   );

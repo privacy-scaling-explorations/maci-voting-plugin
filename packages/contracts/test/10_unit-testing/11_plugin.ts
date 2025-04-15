@@ -1,5 +1,4 @@
 import {createDaoProxy} from '../20_integration-testing/test-helpers';
-import {TestGovernanceERC20} from '../../typechain';
 import {IMaciVoting} from '../../typechain/src/MaciVoting';
 import {loadFixtureCustom} from '../test-utils/fixture';
 import {
@@ -13,7 +12,7 @@ import {
   CREATE_PROPOSAL_PERMISSION_ID,
   ANY_ADDR,
 } from '../test-utils/token-voting-constants';
-import {TokenVoting, MaciVoting} from '../test-utils/typechain-versions';
+import {MaciVoting} from '../test-utils/typechain-versions';
 import {ARTIFACT_SOURCES} from '../test-utils/wrapper';
 import {DAO_PERMISSIONS} from '@aragon/osx-commons-sdk';
 import {DAO, DAOStructs} from '@aragon/osx-ethers';
@@ -37,7 +36,6 @@ type GlobalFixtureResult = {
   mallory: SignerWithAddress;
   initializedPlugin: MaciVoting;
   uninitializedPlugin: MaciVoting;
-  token: TestGovernanceERC20;
   dao: DAO;
   defaultMaci: string;
   defaultCoordinatorPubKey: {x: BigNumberish; y: BigNumberish};
@@ -67,19 +65,6 @@ async function globalFixture(): Promise<GlobalFixtureResult> {
   const dao = await createDaoProxy(deployer, dummyMetadata);
 
   // Deploy a plugin proxy factory containing the plugin implementation.
-
-  const token = await hre.wrapper.deploy(ARTIFACT_SOURCES.TestGovernanceERC20, {
-    args: [
-      dao.address,
-      'gov',
-      'GOV',
-      {
-        receivers: [],
-        amounts: [],
-      },
-    ],
-  });
-
   // Deploy an initialized plugin proxy.
 
   const initializedPlugin = await hre.wrapper.deploy(
@@ -159,7 +144,6 @@ async function globalFixture(): Promise<GlobalFixtureResult> {
     defaultMaci,
     defaultCoordinatorPubKey,
     defaultVotingSettings,
-    token,
     dao,
     dummyActions,
     dummyMetadata,
@@ -169,28 +153,19 @@ async function globalFixture(): Promise<GlobalFixtureResult> {
 async function grantCreateProposalPermissions(
   deployer: SignerWithAddress,
   dao: DAO,
-  initializedPlugin: TokenVoting,
-  uninitializedPlugin: TokenVoting
+  initializedPlugin: MaciVoting,
+  uninitializedPlugin: MaciVoting
 ) {
-  const condition = await hre.wrapper.deploy(
-    ARTIFACT_SOURCES.VotingPowerCondition,
-    {
-      args: [initializedPlugin.address],
-    }
-  );
-
-  await dao.grantWithCondition(
+  await dao.grant(
     initializedPlugin.address,
     ANY_ADDR,
-    CREATE_PROPOSAL_PERMISSION_ID,
-    condition.address
+    CREATE_PROPOSAL_PERMISSION_ID
   );
 
-  await dao.grantWithCondition(
+  await dao.grant(
     uninitializedPlugin.address,
     ANY_ADDR,
-    CREATE_PROPOSAL_PERMISSION_ID,
-    condition.address
+    CREATE_PROPOSAL_PERMISSION_ID
   );
 }
 
