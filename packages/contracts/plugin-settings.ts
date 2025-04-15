@@ -1,7 +1,5 @@
 import buildMetadata from './src/build-metadata.json';
 import releaseMetadata from './src/release-metadata.json';
-import {GovernanceERC20} from './test/test-utils/typechain-versions';
-import {ethers} from 'hardhat';
 
 export const PLUGIN_REPO_PROXY_NAME = 'TokenVotingProxy';
 export const PLUGIN_CONTRACT_NAME = 'MaciVoting'; // This must match the filename `packages/contracts/src/MyPlugin.sol` and the contract name `MyPlugin` within.
@@ -26,26 +24,3 @@ export const METADATA = {
   build: buildMetadata,
   release: releaseMetadata,
 };
-
-const zeroDaoAddress = ethers.constants.AddressZero;
-const zeroTokenAddress = ethers.constants.AddressZero;
-const emptyName = '';
-const emptySymbol = '';
-
-export const emptyMintSettings: GovernanceERC20.MintSettingsStruct = {
-  receivers: [],
-  amounts: [],
-};
-
-export const GOVERNANCE_ERC20_DEPLOY_ARGS = [
-  zeroDaoAddress,
-  emptyName,
-  emptySymbol,
-  emptyMintSettings,
-];
-
-export const GOVERNANCE_WRAPPED_ERC20_DEPLOY_ARGS = [
-  zeroTokenAddress,
-  emptyName,
-  emptySymbol,
-];
